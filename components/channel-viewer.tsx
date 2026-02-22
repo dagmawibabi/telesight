@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { ChannelHeader } from "./channel-header"
 import { FilterToolbar, type FilterType } from "./filter-toolbar"
 import { MasonryGrid } from "./masonry-grid"
-import type { TelegramExport, TelegramMessage } from "@/lib/telegram-types"
+import type { TelegramExport, TelegramMessage, SortDirection } from "@/lib/telegram-types"
 import {
   computeStats,
   getMessageText,
@@ -20,6 +20,7 @@ interface ChannelViewerProps {
 export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -86,8 +87,8 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
   }, [data.messages, activeFilter, searchQuery])
 
   const monthGroups = useMemo(
-    () => groupByMonth(filteredMessages),
-    [filteredMessages]
+    () => groupByMonth(filteredMessages, sortDirection),
+    [filteredMessages, sortDirection]
   )
 
   return (
@@ -99,6 +100,8 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
         resultCount={filteredMessages.length}
+        sortDirection={sortDirection}
+        onSortChange={setSortDirection}
       />
       <MasonryGrid monthGroups={monthGroups} messageMap={messageMap} />
 

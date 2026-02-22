@@ -246,13 +246,18 @@ export function MessageCard({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-1 border-t border-border/50">
-        <time className="text-[10px] text-muted-foreground font-mono">
-          {format(new Date(message.date), "MMM d, yyyy 'at' HH:mm")}
-        </time>
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground/50 font-mono">
+            #{message.id}
+          </span>
+          <time className="text-[10px] text-muted-foreground font-mono">
+            {format(new Date(message.date), "MMM d, yyyy 'at' HH:mm")}
+          </time>
+        </div>
         {message.edited && (
-          <span className="text-[10px] text-muted-foreground/60 italic">
-            edited
+          <span className="text-[10px] text-muted-foreground/60 italic" title={message.edited}>
+            edited {format(new Date(message.edited), "MMM d 'at' HH:mm")}
           </span>
         )}
       </div>

@@ -127,7 +127,12 @@ export function computeStats(data: TelegramExport): ChannelStats {
   }
 }
 
-export function groupByMonth(messages: TelegramMessage[]): MonthGroup[] {
+export type SortDirection = "newest" | "oldest"
+
+export function groupByMonth(
+  messages: TelegramMessage[],
+  sortDirection: SortDirection = "newest"
+): MonthGroup[] {
   const groups = new Map<string, TelegramMessage[]>()
 
   for (const msg of messages) {
@@ -138,17 +143,26 @@ export function groupByMonth(messages: TelegramMessage[]): MonthGroup[] {
   }
 
   return Array.from(groups.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) =>
+      sortDirection === "newest" ? b.localeCompare(a) : a.localeCompare(b)
+    )
     .map(([key, msgs]) => {
       const [year, month] = key.split("-")
       const date = new Date(parseInt(year), parseInt(month) - 1)
+      const sortedMsgs =
+        sortDirection === "newest"
+          ? [...msgs].sort(
+              (a, b) =>
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+            )
+          : msgs
       return {
         key,
         label: date.toLocaleDateString("en-US", {
           year: "numeric",
           month: "long",
         }),
-        messages: msgs,
+        messages: sortedMsgs,
       }
     })
 }

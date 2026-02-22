@@ -84,7 +84,7 @@ export function ChannelHeader({ stats }: ChannelHeaderProps) {
                 >
                   <span>{r.emoji}</span>
                   <span className="text-muted-foreground font-mono">
-                    {r.count}
+                    {r.count.toLocaleString()}
                   </span>
                 </span>
               ))}

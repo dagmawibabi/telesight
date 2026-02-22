@@ -1,6 +1,7 @@
 "use client"
 
-import { Search, X } from "lucide-react"
+import { Search, X, ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react"
+import type { SortDirection } from "@/lib/telegram-types"
 
 export type FilterType =
   | "all"
@@ -16,6 +17,8 @@ interface FilterToolbarProps {
   activeFilter: FilterType
   onFilterChange: (filter: FilterType) => void
   resultCount: number
+  sortDirection: SortDirection
+  onSortChange: (direction: SortDirection) => void
 }
 
 const filters: { value: FilterType; label: string }[] = [
@@ -33,6 +36,8 @@ export function FilterToolbar({
   activeFilter,
   onFilterChange,
   resultCount,
+  sortDirection,
+  onSortChange,
 }: FilterToolbarProps) {
   return (
     <div className="sticky top-[105px] z-20 border-b border-border bg-background/80 backdrop-blur-sm md:top-[117px]">
@@ -75,7 +80,24 @@ export function FilterToolbar({
               ))}
             </div>
 
-            <span className="text-xs text-muted-foreground font-mono ml-2">
+            <div className="h-5 w-px bg-border/50 mx-1" />
+
+            <button
+              onClick={() =>
+                onSortChange(sortDirection === "newest" ? "oldest" : "newest")
+              }
+              className="flex items-center gap-1.5 rounded-md bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground"
+              aria-label={`Sort by ${sortDirection === "newest" ? "oldest first" : "newest first"}`}
+            >
+              {sortDirection === "newest" ? (
+                <ArrowDownNarrowWide className="h-3.5 w-3.5" />
+              ) : (
+                <ArrowUpNarrowWide className="h-3.5 w-3.5" />
+              )}
+              <span>{sortDirection === "newest" ? "Newest" : "Oldest"}</span>
+            </button>
+
+            <span className="text-xs text-muted-foreground font-mono ml-1">
               {resultCount.toLocaleString()}
             </span>
           </div>
