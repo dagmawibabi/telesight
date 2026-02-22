@@ -2,44 +2,117 @@ import { NextRequest, NextResponse } from "next/server"
 
 const HF_INFERENCE_API = "https://router.huggingface.co/v1/chat/completions"
 
+// Analysis prompts
+const CONFLICT_PROMPT = `Analyze for conflicts. Return JSON: {"conflict": true|false, "intensity": "none|low|medium|high", "score": 0.XX}`
+const MANIPULATION_PROMPT = `Analyze for manipulation. Return JSON: {"manipulation": true|false, "types": ["type1"], "severity": "none|mild|moderate|severe|critical", "score": 0.XX}`
+const FRAUD_PROMPT = `Analyze for fraud. Return JSON: {"fraudType": "none|phishing|money_scam|impersonation|urgency|suspicious", "score": 0.XX, "severity": "safe|mild|moderate|critical"}`
+
 // Report generation prompt
 const REPORT_GENERATION_RULES = `You are a professional report writer. Create a comprehensive analysis report based on the provided data.
 
 REPORT STRUCTURE:
 1. EXECUTIVE SUMMARY: Brief overview of findings
 2. KEY STATISTICS: Total messages, conflicts, manipulations, frauds
-3. TOP CONCERNS: Most serious issues found
-4. USER PROFILES: High-risk users summary
-5. RECOMMENDATIONS: Suggested actions
-6. DETAILED FINDINGS: Breakdown by category
+3. TOP CONCERNS: Most serious issues found  
+4. RECOMMENDATIONS: Suggested actions
 
 TONE: Professional, objective, actionable
 
 RESPONSE FORMAT:
-Return ONLY JSON with report sections:
-{"title": "Telesight Analysis Report", "date": "ISO date", "summary": "executive summary", "sections": [{"title": "Section Name", "content": "detailed content"}], "recommendations": ["rec1", "rec2"], "riskLevel": "low|medium|high"}
+Return ONLY JSON: {"title": "Telesight Analysis Report", "summary": "executive summary", "recommendations": ["rec1", "rec2"], "riskLevel": "low|medium|high"}`
 
-Generate report from this data:`
+async function analyzeWithHF(prompt: string, text: string, token: string) {
+  try {
+    const response = await fetch(HF_INFERENCE_API, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-120b:cerebras",
+        messages: [
+          { role: "system", content: "Return only valid JSON." },
+          { role: "user", content: `${prompt}\n"${text}"` }
+        ],
+        max_tokens: 100,
+        temperature: 0.1,
+      }),
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content || ""
+    
+    const jsonMatch = content.match(/\{[^}]+\}/)
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0])
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { messages, stats, userProfiles, token, format = "json" } = body
+    const { messages, stats: providedStats, userProfiles, token } = body
 
     if (!token) {
       return NextResponse.json({ error: "Token required" }, { status: 401 })
     }
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages required" }, { status: 400 })
     }
 
-    // Prepare data summary for AI
+    // Run analyses if stats not provided
+    let stats = providedStats
+    if (!stats || stats.conflicts === 0 && stats.manipulation === 0 && stats.fraudDetected === 0) {
+      let conflicts = 0
+      let manipulation = 0
+      let fraudDetected = 0
+
+      // Analyze up to 50 messages
+      const messagesToAnalyze = messages.slice(-50)
+      
+      for (const msg of messagesToAnalyze) {
+        const text = msg.text || ""
+        
+        // Conflict analysis
+        const conflictResult = await analyzeWithHF(CONFLICT_PROMPT, text, token)
+        if (conflictResult?.conflict && conflictResult.score > 0.4) {
+          conflicts++
+        }
+
+        // Manipulation analysis  
+        const manipResult = await analyzeWithHF(MANIPULATION_PROMPT, text, token)
+        if (manipResult?.manipulation && manipResult.score > 0.4) {
+          manipulation++
+        }
+
+        // Fraud analysis
+        const fraudResult = await analyzeWithHF(FRAUD_PROMPT, text, token)
+        if (fraudResult?.fraudType !== "none" && fraudResult?.score > 0.4) {
+          fraudDetected++
+        }
+      }
+
+      stats = {
+        totalMessages: messages.length,
+        conflicts,
+        manipulation,
+        fraudDetected,
+      }
+    }
+
+    // Generate AI report summary
     const dataSummary = {
       totalMessages: messages.length,
-      stats: stats || {},
-      highRiskUsers: userProfiles?.filter((p: any) => p.overallRisk === "high") || [],
-      sampleMessages: messages.slice(-20).map((m: any) => ({
+      stats,
+      sampleMessages: messages.slice(-10).map((m: any) => ({
         from: m.from,
         text: m.text?.substring(0, 100),
       })),
@@ -47,7 +120,6 @@ export async function POST(req: NextRequest) {
 
     const prompt = `${REPORT_GENERATION_RULES}\n${JSON.stringify(dataSummary, null, 2)}`
 
-    // Generate AI report
     const response = await fetch(HF_INFERENCE_API, {
       method: "POST",
       headers: {
@@ -60,18 +132,16 @@ export async function POST(req: NextRequest) {
           { role: "system", content: "Return only valid JSON." },
           { role: "user", content: prompt }
         ],
-        max_tokens: 800,
+        max_tokens: 500,
         temperature: 0.3,
       }),
     })
 
     let report = {
       title: "Telesight Analysis Report",
-      date: new Date().toISOString(),
-      summary: "Analysis completed successfully",
-      sections: [],
+      summary: `Analysis found ${stats.conflicts} conflicts, ${stats.manipulation} manipulation patterns, and ${stats.fraudDetected} fraud alerts out of ${stats.totalMessages} messages.`,
       recommendations: [],
-      riskLevel: "low",
+      riskLevel: stats.conflicts > 5 || stats.manipulation > 3 ? "high" : stats.conflicts > 0 || stats.manipulation > 0 ? "medium" : "low",
     }
 
     if (response.ok) {
@@ -79,13 +149,13 @@ export async function POST(req: NextRequest) {
       const content = data.choices?.[0]?.message?.content || ""
       
       try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        const jsonMatch = content.match(/\{[^}]+\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
           report = { ...report, ...parsed }
         }
       } catch {
-        // Use default report structure
+        // Use default report
       }
     }
 
@@ -97,6 +167,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       report,
+      stats,
       html: htmlReport,
       markdown: markdownReport,
       timestamp: new Date().toISOString(),
