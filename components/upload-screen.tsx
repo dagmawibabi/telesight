@@ -65,8 +65,8 @@ export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: 
             </h1>
           </div>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
-            Import your Telegram channel export to visualize messages in a
-            beautiful masonry grid.
+            Import your Telegram channel or group export to visualize messages,
+            analytics, and media in a beautiful interface.
           </p>
         </div>
 

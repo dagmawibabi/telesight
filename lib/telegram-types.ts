@@ -15,10 +15,35 @@ export interface TextEntity {
 
 export type MessageText = string | TextEntity
 
+export interface ReactionRecent {
+  from: string
+  from_id: string
+  date: string
+}
+
 export interface Reaction {
   type: string
   count: number
   emoji: string
+  recent?: ReactionRecent[]
+}
+
+export interface TodoItem {
+  text: string
+  id: number
+}
+
+export interface TodoList {
+  title: string
+  others_can_append?: boolean
+  others_can_complete?: boolean
+  answers: TodoItem[]
+}
+
+export interface ContactInfo {
+  first_name?: string
+  last_name?: string
+  phone_number?: string
 }
 
 export interface TelegramMessage {
@@ -52,6 +77,36 @@ export interface TelegramMessage {
   reactions?: Reaction[]
   sticker_emoji?: string
   thumbnail?: string
+  // Group-specific fields
+  todo_list?: TodoList
+  contact_information?: ContactInfo
+  contact_vcard?: string
+  members?: string[]
+  inviter?: string
+  message_id?: number
+  new_title?: string
+  new_icon_emoji_id?: string
+}
+
+export type ExportType = "channel" | "group"
+
+export function detectExportType(data: TelegramExport): ExportType {
+  const t = data.type?.toLowerCase() || ""
+  if (
+    t.includes("supergroup") ||
+    t.includes("private_group") ||
+    t.includes("basic_group") ||
+    t.includes("public_group")
+  ) {
+    return "group"
+  }
+  // If multiple unique 'from' senders, likely a group
+  const senders = new Set<string>()
+  for (const msg of data.messages) {
+    if (msg.from) senders.add(msg.from)
+    if (senders.size > 2) return "group"
+  }
+  return "channel"
 }
 
 export interface ChannelStats {
