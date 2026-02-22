@@ -24,6 +24,8 @@ import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
 import { SentimentView } from "./sentiment-view"
 import { FraudView } from "./fraud-view"
+import { UserProfilesView } from "./user-profiles-view"
+import { ReportsView } from "./reports-view"
 import { AIChatWidget } from "./ai-chat-widget"
 
 
@@ -49,6 +51,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [sentimentOpen, setSentimentOpen] = useState(false)
   const [fraudOpen, setFraudOpen] = useState(false)
+  const [userProfilesOpen, setUserProfilesOpen] = useState(false)
+  const [reportsOpen, setReportsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -172,6 +176,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onInsightsClick={() => setInsightsOpen(true)}
         onSentimentClick={() => setSentimentOpen(true)}
         onFraudClick={() => setFraudOpen(true)}
+        onUserProfilesClick={() => setUserProfilesOpen(true)}
+        onReportsClick={() => setReportsOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -267,6 +273,22 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* User Profiles overlay */}
+      {userProfilesOpen && (
+        <UserProfilesView
+          messages={data.messages}
+          onClose={() => setUserProfilesOpen(false)}
+        />
+      )}
+
+      {/* Reports overlay */}
+      {reportsOpen && (
+        <ReportsView
+          messages={data.messages}
+          onClose={() => setReportsOpen(false)}
         />
       )}
 
