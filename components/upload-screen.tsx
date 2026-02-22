@@ -172,8 +172,7 @@ export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: 
         </label>
 
         <p className="text-xs text-muted-foreground/60">
-          Export from Telegram Desktop: Settings &rarr; Advanced &rarr; Export
-          Telegram Data
+          Export Channel, Group or DM data as JSON
         </p>
       </div>
     </main>
