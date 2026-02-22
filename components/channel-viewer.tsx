@@ -24,6 +24,7 @@ import { InsightsView } from "./insights-view"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
 import { SentimentView } from "./sentiment-view"
+import { FraudView } from "./fraud-view"
 import { AIChatWidget } from "./ai-chat-widget"
 
 
@@ -48,6 +49,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [sentimentOpen, setSentimentOpen] = useState(false)
+  const [fraudOpen, setFraudOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -170,6 +172,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onSentimentClick={() => setSentimentOpen(true)}
+        onFraudClick={() => setFraudOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -249,6 +252,19 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           onClose={() => setSentimentOpen(false)}
           onPostClick={(msg) => {
             setSentimentOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Fraud detection overlay */}
+      {fraudOpen && (
+        <FraudView
+          messages={data.messages}
+          onClose={() => setFraudOpen(false)}
+          onPostClick={(msg) => {
+            setFraudOpen(false)
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}

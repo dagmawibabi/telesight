@@ -25,9 +25,9 @@ import { MemberAnalyticsView } from "./member-analytics-view"
 import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
 import { ConflictView } from "./conflict-view"
-import { ManipulationView } from "./manipulation-view"
-import { AIChatWidget } from "./ai-chat-widget"
 import { SentimentView } from "./sentiment-view"
+import { FraudView } from "./fraud-view"
+import { AIChatWidget } from "./ai-chat-widget"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -51,6 +51,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
   const [sentimentOpen, setSentimentOpen] = useState(false)
+  const [fraudOpen, setFraudOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -155,6 +156,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onInsightsClick={() => setInsightsOpen(true)}
         onMembersClick={() => setMembersOpen(true)}
         onSentimentClick={() => setSentimentOpen(true)}
+        onFraudClick={() => setFraudOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -312,6 +314,19 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
           onClose={() => setSentimentOpen(false)}
           onPostClick={(msg) => {
             setSentimentOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Fraud detection overlay */}
+      {fraudOpen && (
+        <FraudView
+          messages={data.messages}
+          onClose={() => setFraudOpen(false)}
+          onPostClick={(msg) => {
+            setFraudOpen(false)
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}
