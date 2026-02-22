@@ -5,12 +5,12 @@ const HF_INFERENCE_API = "https://api-inference.huggingface.co/models"
 
 // Recommended models for chat/conversation
 const CHAT_MODELS = {
-  // OpenAI GPT-OSS 20B - open weight model
-  conversational: "openai/gpt-oss-20b",
-  // OpenAI GPT-OSS 20B
-  flan: "openai/gpt-oss-20b",
-  // OpenAI GPT-OSS 20B
-  llama: "openai/gpt-oss-20b",
+  // DistilGPT2 - smaller, usually available on free tier
+  conversational: "distilgpt2",
+  // DistilGPT2
+  flan: "distilgpt2",
+  // DistilGPT2
+  llama: "distilgpt2",
 }
 
 // Build a context-aware prompt from message history
