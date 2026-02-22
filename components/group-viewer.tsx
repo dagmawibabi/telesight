@@ -13,7 +13,6 @@ import {
   type Topic,
 } from "@/lib/group-analytics"
 import { ArrowLeft, FolderOpen, Check, List, Calendar } from "lucide-react"
-import { Flame, Brain } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { CalendarView } from "./calendar-view"
 import { PostDetailView } from "./post-detail-view"
@@ -24,10 +23,6 @@ import { InsightsView } from "./insights-view"
 import { MemberAnalyticsView } from "./member-analytics-view"
 import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
-import { ConflictView } from "./conflict-view"
-import { ManipulationView } from "./manipulation-view"
-import { HFChatWidget } from "./hf-chat-widget"
-import { HFSettingsModal } from "./hf-settings-modal"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -50,9 +45,6 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [manipulationOpen, setManipulationOpen] = useState(false)
-  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -156,8 +148,6 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onMembersClick={() => setMembersOpen(true)}
-        onConflictClick={() => setConflictOpen(true)}
-        onManipulationClick={() => setManipulationOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -308,32 +298,6 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         />
       )}
 
-      {/* Conflict detection overlay */}
-      {conflictOpen && (
-        <ConflictView
-          messages={data.messages}
-          onClose={() => setConflictOpen(false)}
-          onPostClick={(msg) => {
-            setConflictOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
-      {/* Manipulation detection overlay */}
-      {manipulationOpen && (
-        <ManipulationView
-          messages={data.messages}
-          onClose={() => setManipulationOpen(false)}
-          onPostClick={(msg) => {
-            setManipulationOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
       {/* Post detail overlay */}
       {selectedPost && (
         <PostDetailView
@@ -408,17 +372,6 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
           New file
         </button>
       </div>
-      {/* HF AI Chat */}
-      <HFChatWidget
-        messages={data.messages}
-        onOpenSettings={() => setHfSettingsOpen(true)}
-      />
-
-      {/* HF Settings Modal */}
-      <HFSettingsModal
-        isOpen={hfSettingsOpen}
-        onClose={() => setHfSettingsOpen(false)}
-      />
     </div>
   )
 }

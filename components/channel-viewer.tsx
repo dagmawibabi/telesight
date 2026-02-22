@@ -12,7 +12,6 @@ import {
   groupByMonth,
 } from "@/lib/telegram-types"
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
-import { Flame, Brain } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"
@@ -21,10 +20,6 @@ import { StatsView } from "./stats-view"
 import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
-import { ConflictView } from "./conflict-view"
-import { ManipulationView } from "./manipulation-view"
-import { HFChatWidget } from "./hf-chat-widget"
-import { HFSettingsModal } from "./hf-settings-modal"
 
 
 interface ChannelViewerProps {
@@ -47,9 +42,6 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [manipulationOpen, setManipulationOpen] = useState(false)
-  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -171,8 +163,6 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGraphClick={() => setGraphOpen(true)}
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
-        onConflictClick={() => setConflictOpen(true)}
-        onManipulationClick={() => setManipulationOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -242,32 +232,6 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         <InsightsView
           messages={data.messages}
           onClose={() => setInsightsOpen(false)}
-        />
-      )}
-
-      {/* Conflict detection overlay */}
-      {conflictOpen && (
-        <ConflictView
-          messages={data.messages}
-          onClose={() => setConflictOpen(false)}
-          onPostClick={(msg) => {
-            setConflictOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
-      {/* Manipulation detection overlay */}
-      {manipulationOpen && (
-        <ManipulationView
-          messages={data.messages}
-          onClose={() => setManipulationOpen(false)}
-          onPostClick={(msg) => {
-            setManipulationOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
         />
       )}
 
@@ -357,17 +321,6 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           New file
         </button>
       </div>
-      {/* HF AI Chat */}
-      <HFChatWidget
-        messages={data.messages}
-        onOpenSettings={() => setHfSettingsOpen(true)}
-      />
-
-      {/* HF Settings Modal */}
-      <HFSettingsModal
-        isOpen={hfSettingsOpen}
-        onClose={() => setHfSettingsOpen(false)}
-      />
     </div>
   )
 }
