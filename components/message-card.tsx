@@ -11,6 +11,7 @@ interface MessageCardProps {
   onReplyClick?: (id: number) => void
   onHashtagClick?: (hashtag: string) => void
   mediaFileMap?: MediaFileMap | null
+  onPostClick?: (message: TelegramMessage) => void
 }
 
 function renderTextParts(
@@ -30,6 +31,7 @@ function renderTextParts(
             href={part.text}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="text-primary hover:underline break-all inline-flex items-center gap-1"
           >
             <span className="truncate max-w-[200px] inline-block align-bottom">
@@ -117,6 +119,7 @@ function renderTextParts(
             href={part.href || "#"}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="text-primary hover:underline"
           >
             {part.text}
@@ -144,6 +147,7 @@ export function MessageCard({
   onReplyClick,
   onHashtagClick,
   mediaFileMap,
+  onPostClick,
 }: MessageCardProps) {
   const text = getPlainText(message)
   const hasMedia = !!(message.photo || message.media_type || message.file)
@@ -164,11 +168,25 @@ export function MessageCard({
   const resolvedThumbUrl = thumbnailUrl
 
   return (
-    <article className="group rounded-xl border border-border bg-card p-4 transition-all hover:border-border/80 hover:bg-card/80 flex flex-col gap-3">
+    <article
+      onClick={() => onPostClick?.(message)}
+      className="group rounded-xl border border-border bg-card p-4 transition-all hover:border-border/80 hover:bg-card/80 flex flex-col gap-3 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onPostClick?.(message)
+        }
+      }}
+    >
       {/* Reply indicator */}
       {message.reply_to_message_id && (
         <button
-          onClick={() => onReplyClick?.(message.reply_to_message_id!)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onReplyClick?.(message.reply_to_message_id!)
+          }}
           className="flex items-start gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 text-left transition-colors hover:bg-primary/10 w-full"
         >
           <Reply className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
@@ -201,7 +219,7 @@ export function MessageCard({
       {hasMedia && (
         <>
           {resolvedMediaUrl ? (
-            <div className="rounded-lg overflow-hidden bg-secondary/30 -mx-1">
+            <div className="rounded-lg overflow-hidden bg-secondary/30 -mx-1" onClick={(e) => e.stopPropagation()}>
               {isVideo || isAnimation ? (
                 <video
                   src={resolvedMediaUrl}

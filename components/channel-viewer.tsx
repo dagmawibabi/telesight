@@ -15,6 +15,7 @@ import { ArrowLeft, FolderOpen, Check } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"
+import { PostDetailView } from "./post-detail-view"
 
 interface ChannelViewerProps {
   data: TelegramExport
@@ -31,6 +32,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
   const [activeHashtag, setActiveHashtag] = useState<string | null>(null)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
+  const [selectedPost, setSelectedPost] = useState<TelegramMessage | null>(null)
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -125,6 +127,21 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
     setCalendarOpen({ year, month })
   }, [])
 
+  const openPost = useCallback((msg: TelegramMessage) => {
+    setSelectedPost(msg)
+  }, [])
+
+  const handleReplyNavigate = useCallback((id: number) => {
+    const el = document.getElementById(`msg-${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.classList.add("ring-2", "ring-primary/50")
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-primary/50")
+      }, 2000)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       <ChannelHeader stats={stats} />
@@ -150,7 +167,30 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onHashtagClick={handleHashtagClick}
         mediaFileMap={mediaFileMap}
         onMonthClick={openCalendar}
+        onPostClick={openPost}
       />
+
+      {/* Post detail overlay */}
+      {selectedPost && (
+        <PostDetailView
+          message={selectedPost}
+          replyToMessage={
+            selectedPost.reply_to_message_id
+              ? messageMap.get(selectedPost.reply_to_message_id)
+              : undefined
+          }
+          mediaFileMap={mediaFileMap}
+          onClose={() => setSelectedPost(null)}
+          onHashtagClick={(tag) => {
+            setSelectedPost(null)
+            handleHashtagClick(tag)
+          }}
+          onReplyNavigate={(id) => {
+            setSelectedPost(null)
+            handleReplyNavigate(id)
+          }}
+        />
+      )}
 
       {/* Calendar overlay */}
       {calendarOpen && (
