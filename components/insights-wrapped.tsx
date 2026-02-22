@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { TelegramMessage } from "@/lib/telegram-types"
-import { getMessageText } from "@/lib/telegram-types"
+import { getMessageText, getDMParticipants } from "@/lib/telegram-types"
 import { computeMemberStats, type MemberStat } from "@/lib/group-analytics"
 
 interface InsightsWrappedProps {
@@ -60,6 +60,10 @@ interface WrappedData {
   memberCount: number
   topMembers: { name: string; messages: number; pct: number }[]
   topReactor: { name: string; count: number } | null
+  // DM-specific
+  isDM: boolean
+  dmParticipants: [string, string] | null
+  dmSplit: { nameA: string; nameB: string; countA: number; countB: number; pctA: number } | null
 }
 
 function computeWrappedData(messages: TelegramMessage[]): WrappedData {
@@ -175,6 +179,21 @@ function computeWrappedData(messages: TelegramMessage[]): WrappedData {
     if (m.from) senders.add(m.from)
   }
   const isGroup = senders.size > 2
+  const isDM = senders.size === 2
+  const dmParticipants = getDMParticipants(messages)
+  let dmSplit: WrappedData["dmSplit"] = null
+
+  if (isDM && dmParticipants) {
+    const [nameA, nameB] = dmParticipants
+    const countA = posts.filter((m) => m.from === nameA).length
+    const countB = posts.filter((m) => m.from === nameB).length
+    const total = countA + countB
+    dmSplit = {
+      nameA, nameB, countA, countB,
+      pctA: total > 0 ? Math.round((countA / total) * 100) : 50,
+    }
+  }
+
   let topMembers: WrappedData["topMembers"] = []
   let topReactor: WrappedData["topReactor"] = null
 
@@ -219,6 +238,9 @@ function computeWrappedData(messages: TelegramMessage[]): WrappedData {
     memberCount: senders.size,
     topMembers,
     topReactor,
+    isDM,
+    dmParticipants,
+    dmSplit,
   }
 }
 
@@ -289,8 +311,8 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
   const subtext: React.CSSProperties = {
     fontSize: 10, color: "#5a7a90", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.04em",
   }
-  const accentColor = stats.isGroup ? "#ba68c8" : "#4dd0e1"
-  const accentColorDim = stats.isGroup ? "rgba(186,104,200,0.3)" : "rgba(77,208,225,0.3)"
+  const accentColor = stats.isGroup ? "#ba68c8" : stats.isDM ? "#f48fb1" : "#4dd0e1"
+  const accentColorDim = stats.isGroup ? "rgba(186,104,200,0.3)" : stats.isDM ? "rgba(244,143,177,0.3)" : "rgba(77,208,225,0.3)"
 
   return (
     <div className="fixed inset-0 z-[70] bg-background/95 backdrop-blur-sm overflow-auto">
@@ -300,7 +322,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
           <div>
             <h2 className="text-lg font-semibold text-foreground">Insights Wrapped</h2>
             <p className="text-xs text-muted-foreground">
-              {stats.isGroup ? "Group" : "Channel"} summary -- {stats.dateRange.start} to {stats.dateRange.end}
+              {stats.isDM ? "DM" : stats.isGroup ? "Group" : "Channel"} summary -- {stats.dateRange.start} to {stats.dateRange.end}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -334,7 +356,9 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
           style={{
             background: stats.isGroup
               ? "linear-gradient(145deg, #0f0a1a 0%, #15102a 40%, #0f0a1a 100%)"
-              : "linear-gradient(145deg, #0a0f1a 0%, #0d1520 40%, #0a1a18 100%)",
+              : stats.isDM
+                ? "linear-gradient(145deg, #1a0a14 0%, #1e1020 40%, #1a0a14 100%)"
+                : "linear-gradient(145deg, #0a0f1a 0%, #0d1520 40%, #0a1a18 100%)",
             borderRadius: 20,
             padding: 36,
             color: "#e0e8f0",
@@ -353,7 +377,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
               </div>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-                  {stats.isGroup ? "Group" : "Channel"} Wrapped
+                  {stats.isDM ? "DM" : stats.isGroup ? "Group" : "Channel"} Wrapped
                 </div>
                 <div style={{ fontSize: 10, color: "#5a7a90", letterSpacing: "0.08em", fontWeight: 500 }}>
                   {stats.dateRange.start} -- {stats.dateRange.end}
@@ -511,6 +535,55 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* DM-specific: conversation balance */}
+          {stats.isDM && stats.dmSplit && (
+            <div style={{
+              background: sectionBg, borderRadius: 12, padding: 14, border: sectionBorder, marginBottom: 18,
+            }}>
+              <div style={labelStyle}>
+                <Users style={{ width: 11, height: 11, color: accentColor }} />
+                Conversation Balance
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 11, fontSize: 10, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "#4dd0e1", color: "#0a0f1a", flexShrink: 0,
+                  }}>
+                    {stats.dmSplit.nameA.charAt(0).toUpperCase()}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{stats.dmSplit.nameA.split(" ")[0]}</span>
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: accentColor }}>
+                  {stats.dmSplit.pctA}% &mdash; {100 - stats.dmSplit.pctA}%
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 11, fontSize: 10, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "#ff8a65", color: "#0a0f1a", flexShrink: 0,
+                  }}>
+                    {stats.dmSplit.nameB.charAt(0).toUpperCase()}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{stats.dmSplit.nameB.split(" ")[0]}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${stats.dmSplit.pctA}%`, background: "#4dd0e1" }} />
+                <div style={{ width: `${100 - stats.dmSplit.pctA}%`, background: "#ff8a65" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                <span style={{ fontSize: 9, color: "#5a7a90", fontVariantNumeric: "tabular-nums" }}>
+                  {stats.dmSplit.countA.toLocaleString()} msgs
+                </span>
+                <span style={{ fontSize: 9, color: "#5a7a90", fontVariantNumeric: "tabular-nums" }}>
+                  {stats.dmSplit.countB.toLocaleString()} msgs
+                </span>
               </div>
             </div>
           )}

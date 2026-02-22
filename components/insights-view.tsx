@@ -29,7 +29,7 @@ import {
   Cell,
 } from "recharts"
 import type { TelegramMessage } from "@/lib/telegram-types"
-import { getMessageText } from "@/lib/telegram-types"
+import { getMessageText, getDMParticipants } from "@/lib/telegram-types"
 import { ActivityHeatmap } from "./activity-heatmap"
 import { InsightsWrapped } from "./insights-wrapped"
 import { computeMemberStats, type MemberStat } from "@/lib/group-analytics"
@@ -585,6 +585,222 @@ function MemberBreakdownSection({
   )
 }
 
+// ─── DM Head-to-Head ────────────────────────────────────────────────────────
+
+function DMHeadToHead({
+  dmData,
+}: {
+  dmData: {
+    nameA: string
+    nameB: string
+    statsA: {
+      count: number; totalReactions: number; avgLength: number; replies: number
+      withMedia: number; withLinks: number; edited: number; hours: number[]
+      topEmojis: { emoji: string; count: number }[]
+    }
+    statsB: {
+      count: number; totalReactions: number; avgLength: number; replies: number
+      withMedia: number; withLinks: number; edited: number; hours: number[]
+      topEmojis: { emoji: string; count: number }[]
+    }
+  }
+}) {
+  const { nameA, nameB, statsA, statsB } = dmData
+  const colorA = "oklch(0.7 0.15 180)"
+  const colorB = "oklch(0.7 0.15 30)"
+  const total = statsA.count + statsB.count
+  const pctA = total > 0 ? Math.round((statsA.count / total) * 100) : 50
+  const pctB = 100 - pctA
+
+  const comparisons = [
+    { label: "Messages", a: statsA.count, b: statsB.count },
+    { label: "Reactions received", a: statsA.totalReactions, b: statsB.totalReactions },
+    { label: "Avg length", a: statsA.avgLength, b: statsB.avgLength, suffix: " chars" },
+    { label: "Replies sent", a: statsA.replies, b: statsB.replies },
+    { label: "Media shared", a: statsA.withMedia, b: statsB.withMedia },
+    { label: "Links shared", a: statsA.withLinks, b: statsB.withLinks },
+    { label: "Messages edited", a: statsA.edited, b: statsB.edited },
+  ]
+
+  const peakA = statsA.hours.indexOf(Math.max(...statsA.hours))
+  const peakB = statsB.hours.indexOf(Math.max(...statsB.hours))
+  const maxHour = Math.max(...statsA.hours, ...statsB.hours, 1)
+
+  return (
+    <section>
+      <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
+        <Users className="h-3.5 w-3.5" />
+        Conversation Balance
+      </h2>
+
+      {/* Dual avatar header with split bar */}
+      <div className="rounded-xl border border-border bg-card p-5 mb-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-background"
+              style={{ backgroundColor: colorA }}
+            >
+              {nameA.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{nameA}</p>
+              <p className="text-[10px] text-muted-foreground font-mono">{statsA.count.toLocaleString()} msgs</p>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-foreground font-mono">{pctA}% &mdash; {pctB}%</p>
+            <p className="text-[10px] text-muted-foreground">message split</p>
+          </div>
+          <div className="flex items-center gap-2.5 flex-row-reverse">
+            <div
+              className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-background"
+              style={{ backgroundColor: colorB }}
+            >
+              {nameB.charAt(0).toUpperCase()}
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-foreground">{nameB}</p>
+              <p className="text-[10px] text-muted-foreground font-mono">{statsB.count.toLocaleString()} msgs</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Split bar */}
+        <div className="h-3 rounded-full overflow-hidden flex">
+          <div
+            className="h-full transition-all"
+            style={{ width: `${pctA}%`, backgroundColor: colorA }}
+          />
+          <div
+            className="h-full transition-all"
+            style={{ width: `${pctB}%`, backgroundColor: colorB }}
+          />
+        </div>
+      </div>
+
+      {/* Comparison bars */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden mb-5">
+        {comparisons.map((c) => {
+          const maxVal = Math.max(c.a, c.b, 1)
+          const suffix = c.suffix || ""
+          return (
+            <div key={c.label} className="flex items-center px-4 py-3 border-b border-border/40 last:border-b-0 gap-3">
+              <div className="w-24 shrink-0 text-right">
+                <span className={`text-xs font-mono ${c.a >= c.b ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                  {c.a.toLocaleString()}{suffix}
+                </span>
+              </div>
+              <div className="flex-1 flex items-center gap-1">
+                <div className="flex-1 flex justify-end">
+                  <div
+                    className="h-2 rounded-l-full transition-all"
+                    style={{ width: `${(c.a / maxVal) * 100}%`, backgroundColor: colorA }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground w-[90px] text-center shrink-0 font-medium">
+                  {c.label}
+                </span>
+                <div className="flex-1">
+                  <div
+                    className="h-2 rounded-r-full transition-all"
+                    style={{ width: `${(c.b / maxVal) * 100}%`, backgroundColor: colorB }}
+                  />
+                </div>
+              </div>
+              <div className="w-24 shrink-0">
+                <span className={`text-xs font-mono ${c.b >= c.a ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                  {c.b.toLocaleString()}{suffix}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Hourly activity overlay */}
+      <div className="rounded-xl border border-border bg-card p-4 mb-5">
+        <p className="text-xs font-semibold text-foreground mb-3">Activity by Hour</p>
+        <div className="flex items-end gap-px h-16 w-full mb-1.5">
+          {Array.from({ length: 24 }).map((_, h) => (
+            <div key={h} className="flex-1 flex flex-col justify-end gap-px">
+              <div
+                className="w-full rounded-t-sm transition-all"
+                style={{
+                  height: `${(statsA.hours[h] / maxHour) * 100}%`,
+                  minHeight: statsA.hours[h] > 0 ? 2 : 0,
+                  backgroundColor: colorA,
+                  opacity: h === peakA ? 0.9 : 0.4,
+                }}
+                title={`${nameA}: ${statsA.hours[h]} messages at ${h}:00`}
+              />
+              <div
+                className="w-full rounded-b-sm transition-all"
+                style={{
+                  height: `${(statsB.hours[h] / maxHour) * 100}%`,
+                  minHeight: statsB.hours[h] > 0 ? 2 : 0,
+                  backgroundColor: colorB,
+                  opacity: h === peakB ? 0.9 : 0.4,
+                }}
+                title={`${nameB}: ${statsB.hours[h]} messages at ${h}:00`}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[9px] text-muted-foreground/40 font-mono">0:00</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono">12:00</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono">23:00</span>
+        </div>
+        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-border/40">
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: colorA }} />
+            {nameA.split(" ")[0]} peak: {peakA}:00
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: colorB }} />
+            {nameB.split(" ")[0]} peak: {peakB}:00
+          </span>
+        </div>
+      </div>
+
+      {/* Reaction comparison */}
+      {(statsA.topEmojis.length > 0 || statsB.topEmojis.length > 0) && (
+        <div className="grid grid-cols-2 gap-4">
+          {[{ name: nameA, color: colorA, emojis: statsA.topEmojis }, { name: nameB, color: colorB, emojis: statsB.topEmojis }].map(
+            ({ name, color, emojis }) => (
+              <div key={name} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-background"
+                    style={{ backgroundColor: color }}
+                  >
+                    {name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-semibold text-foreground">
+                    {name.split(" ")[0]}{"'s"} reactions received
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {emojis.map((e) => (
+                    <span key={e.emoji} className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs">
+                      <span>{e.emoji}</span>
+                      <span className="text-muted-foreground font-mono text-[10px]">{e.count}</span>
+                    </span>
+                  ))}
+                  {emojis.length === 0 && (
+                    <span className="text-[10px] text-muted-foreground">No reactions</span>
+                  )}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function InsightsView({ messages, onClose }: InsightsViewProps) {
   const [showWrapped, setShowWrapped] = useState(false)
 
@@ -621,6 +837,68 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
 
   const isGroup = memberStats !== null && memberStats.length > 1
 
+  // Detect DM mode: exactly 2 unique senders
+  const dmData = useMemo(() => {
+    const participants = getDMParticipants(messages)
+    if (!participants) return null
+
+    const posts = messages.filter((m) => m.type === "message")
+    const [nameA, nameB] = participants
+    const msgsA = posts.filter((m) => m.from === nameA)
+    const msgsB = posts.filter((m) => m.from === nameB)
+
+    const calcStats = (msgs: TelegramMessage[]) => {
+      const totalReactions = msgs.reduce(
+        (s, m) => s + (m.reactions?.reduce((rs, r) => rs + r.count, 0) || 0), 0
+      )
+      const totalChars = msgs.reduce((s, m) => s + getMessageText(m).length, 0)
+      const replies = msgs.filter((m) => m.reply_to_message_id).length
+      const withMedia = msgs.filter((m) => m.photo || m.file || m.media_type).length
+      const withLinks = msgs.filter((m) => {
+        const t = getMessageText(m)
+        return t.includes("http://") || t.includes("https://")
+      }).length
+      const edited = msgs.filter((m) => m.edited).length
+
+      // Hours distribution
+      const hours = Array(24).fill(0) as number[]
+      for (const m of msgs) hours[new Date(m.date).getHours()]++
+
+      // Top reactions used on their messages
+      const emojiMap = new Map<string, number>()
+      for (const m of msgs) {
+        if (m.reactions) for (const r of m.reactions) {
+          emojiMap.set(r.emoji, (emojiMap.get(r.emoji) || 0) + r.count)
+        }
+      }
+      const topEmojis = Array.from(emojiMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([emoji, count]) => ({ emoji, count }))
+
+      return {
+        count: msgs.length,
+        totalReactions,
+        avgLength: msgs.length > 0 ? Math.round(totalChars / msgs.length) : 0,
+        replies,
+        withMedia,
+        withLinks,
+        edited,
+        hours,
+        topEmojis,
+      }
+    }
+
+    return {
+      nameA,
+      nameB,
+      statsA: calcStats(msgsA),
+      statsB: calcStats(msgsB),
+    }
+  }, [messages])
+
+  const isDM = dmData !== null && !isGroup
+
   const primaryColor = "oklch(0.7 0.15 180)"
   const mutedColor = "oklch(0.35 0.02 260)"
 
@@ -650,10 +928,12 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
             <Lightbulb className="h-5 w-5 text-primary" />
             <div>
               <h1 className="text-lg font-semibold text-foreground">
-                Content Insights
+                {isDM ? "Conversation Insights" : "Content Insights"}
               </h1>
               <p className="text-xs text-muted-foreground">
-                Data-driven recommendations from {data.totalPosts.toLocaleString()} posts
+                {isDM
+                  ? `Analysis of ${data.totalPosts.toLocaleString()} messages between ${dmData?.nameA.split(" ")[0]} & ${dmData?.nameB.split(" ")[0]}`
+                  : `Data-driven recommendations from ${data.totalPosts.toLocaleString()} posts`}
               </p>
             </div>
           </div>
@@ -685,6 +965,11 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           </h2>
           <ActivityHeatmap messages={messages} />
         </section>
+
+        {/* DM Head-to-Head (DMs only) */}
+        {isDM && dmData && (
+          <DMHeadToHead dmData={dmData} />
+        )}
 
         {/* Per-member Breakdown (groups only) */}
         {isGroup && memberStats && (

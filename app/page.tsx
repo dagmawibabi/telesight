@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { UploadScreen } from "@/components/upload-screen"
 import { ChannelViewer } from "@/components/channel-viewer"
 import { GroupViewer } from "@/components/group-viewer"
+import { DMViewer } from "@/components/dm-viewer"
 import type { TelegramExport } from "@/lib/telegram-types"
 import { detectExportType, type ExportType } from "@/lib/telegram-types"
 import type { MediaFileMap } from "@/hooks/use-media-url"
@@ -44,6 +45,10 @@ export default function Home() {
       setMediaFileMap(map)
       setFolderName(name)
     },
+  }
+
+  if (exportType === "dm") {
+    return <DMViewer {...sharedProps} />
   }
 
   if (exportType === "group") {

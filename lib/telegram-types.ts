@@ -88,10 +88,17 @@ export interface TelegramMessage {
   new_icon_emoji_id?: string
 }
 
-export type ExportType = "channel" | "group"
+export type ExportType = "channel" | "group" | "dm"
 
 export function detectExportType(data: TelegramExport): ExportType {
   const t = data.type?.toLowerCase() || ""
+
+  // Explicit personal chat type
+  if (t.includes("personal_chat") || t === "private") {
+    return "dm"
+  }
+
+  // Group types
   if (
     t.includes("supergroup") ||
     t.includes("private_group") ||
@@ -100,13 +107,32 @@ export function detectExportType(data: TelegramExport): ExportType {
   ) {
     return "group"
   }
-  // If multiple unique 'from' senders, likely a group
+
+  // Heuristic: count unique senders
   const senders = new Set<string>()
   for (const msg of data.messages) {
     if (msg.from) senders.add(msg.from)
     if (senders.size > 2) return "group"
   }
+
+  // Exactly 2 senders = DM
+  if (senders.size === 2) return "dm"
+
   return "channel"
+}
+
+/** For DMs, extract the two participants */
+export function getDMParticipants(messages: TelegramMessage[]): [string, string] | null {
+  const senders = new Map<string, string>() // id -> name
+  for (const m of messages) {
+    if (m.type === "message" && m.from && m.from_id) {
+      if (!senders.has(m.from_id)) senders.set(m.from_id, m.from)
+      if (senders.size >= 2) break
+    }
+  }
+  const names = Array.from(senders.values())
+  if (names.length === 2) return [names[0], names[1]]
+  return null
 }
 
 export interface ChannelStats {
