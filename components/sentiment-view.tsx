@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { format } from "date-fns"
 import {
   X,
@@ -141,6 +141,76 @@ export function SentimentView({
   }>({ loading: false, results: null, error: null })
 
   const { token, hasToken } = useHuggingFaceToken()
+
+  // Auto-run HF analysis when token exists
+  useEffect(() => {
+    if (hasToken && messages.length > 0) {
+      runHFConflictAnalysis()
+      runHFManipulationAnalysis()
+    }
+  }, [hasToken, messages.length])
+
+  // Run Hugging Face conflict analysis
+  const runHFConflictAnalysis = async () => {
+    if (!hasToken) return
+
+    try {
+      const messageData = messages
+        .filter(m => m.type === "message")
+        .slice(-100)
+        .map(m => ({
+          id: m.id.toString(),
+          text: getMessageText(m),
+          from: m.from || "Unknown",
+          date: m.date,
+        }))
+
+      const response = await fetch("/api/conflict/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messageData, token }),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        // Store conflict results in state (could add dedicated state for this)
+        console.log("HF Conflict analysis:", data)
+      }
+    } catch (err) {
+      console.error("Conflict analysis failed:", err)
+    }
+  }
+
+  // Run Hugging Face manipulation analysis
+  const runHFManipulationAnalysis = async () => {
+    if (!hasToken) return
+
+    try {
+      const messageData = messages
+        .filter(m => m.type === "message")
+        .slice(-100)
+        .map(m => ({
+          id: m.id.toString(),
+          text: getMessageText(m),
+          from: m.from || "Unknown",
+          date: m.date,
+        }))
+
+      const response = await fetch("/api/manipulation/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messageData, token }),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        // Store manipulation results in state
+        console.log("HF Manipulation analysis:", data)
+      }
+    } catch (err) {
+      console.error("Manipulation analysis failed:", err)
+    }
+  }
 
   // Get data from both detectors
   const conflictStats = useMemo(() => getConflictStats(messages), [messages])
