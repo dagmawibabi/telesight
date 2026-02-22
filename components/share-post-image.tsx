@@ -18,15 +18,18 @@ import {
   Hash as HashIcon,
   Pencil,
   Camera,
+  Film,
 } from "lucide-react"
 import type { TelegramMessage, MessageText } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
 import { computePostScore } from "@/lib/post-scoring"
+import { useMediaUrl, type MediaFileMap } from "@/hooks/use-media-url"
 
 interface SharePostImageProps {
   message: TelegramMessage
   allMessages?: TelegramMessage[]
   channelName?: string
+  mediaFileMap?: MediaFileMap | null
   onClose: () => void
 }
 
@@ -77,9 +80,36 @@ function extractHashtags(msg: TelegramMessage): string[] {
   return tags
 }
 
-export function SharePostImage({ message, allMessages, channelName, onClose }: SharePostImageProps) {
+export function SharePostImage({ message, allMessages, channelName, mediaFileMap, onClose }: SharePostImageProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Resolve media URLs
+  const photoPath = message.photo || (message.file && message.media_type === "video_file" ? message.thumbnail : null)
+  const resolvedMediaUrl = useMediaUrl(mediaFileMap ?? null, photoPath)
+
+  // Convert objectURL to base64 for html-to-image export
+  const [mediaBase64, setMediaBase64] = useState<string | null>(null)
+  useEffect(() => {
+    if (!resolvedMediaUrl) {
+      setMediaBase64(null)
+      return
+    }
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext("2d")
+      if (ctx) {
+        ctx.drawImage(img, 0, 0)
+        setMediaBase64(canvas.toDataURL("image/png"))
+      }
+    }
+    img.onerror = () => setMediaBase64(null)
+    img.src = resolvedMediaUrl
+  }, [resolvedMediaUrl])
 
   // Theme state
   const [activePreset, setActivePreset] = useState(PRESET_THEMES[0].id)
@@ -102,6 +132,7 @@ export function SharePostImage({ message, allMessages, channelName, onClose }: S
   const [showScore, setShowScore] = useState(true)
   const [showHashtags, setShowHashtags] = useState(true)
   const [showEditedDate, setShowEditedDate] = useState(true)
+  const [showMedia, setShowMedia] = useState(true)
 
   // Profile picture
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null)
@@ -386,6 +417,7 @@ export function SharePostImage({ message, allMessages, channelName, onClose }: S
                 { label: "Edited date", icon: <Pencil className="h-3 w-3" />, value: showEditedDate, set: setShowEditedDate, disabled: !message.edited },
                 { label: "Reactions", icon: <Heart className="h-3 w-3" />, value: showReactions, set: setShowReactions, disabled: !message.reactions?.length },
                 { label: "Links", icon: <Link2 className="h-3 w-3" />, value: showLinks, set: setShowLinks, disabled: links.length === 0 },
+                { label: "Media image", icon: <Film className="h-3 w-3" />, value: showMedia, set: setShowMedia, disabled: !mediaBase64 },
                 { label: "Media indicator", icon: <ImageIcon className="h-3 w-3" />, value: showMediaIndicator, set: setShowMediaIndicator, disabled: !hasMedia },
                 { label: "Forwarded from", icon: <Forward className="h-3 w-3" />, value: showForwardedFrom, set: setShowForwardedFrom, disabled: !message.forwarded_from },
                 { label: "Engagement score", icon: <Gauge className="h-3 w-3" />, value: showScore, set: setShowScore, disabled: !postScore },
@@ -524,6 +556,27 @@ export function SharePostImage({ message, allMessages, channelName, onClose }: S
                   {message.file_name ? ` - ${message.file_name}` : ""}
                   {message.duration_seconds ? ` (${message.duration_seconds}s)` : ""}
                 </span>
+              </div>
+            )}
+
+            {/* Actual media image */}
+            {showMedia && mediaBase64 && (
+              <div style={{
+                marginBottom: 16,
+                borderRadius: 10,
+                overflow: "hidden",
+                backgroundColor: theme.card,
+              }}>
+                <img
+                  src={mediaBase64}
+                  alt=""
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    maxHeight: 360,
+                    objectFit: "cover",
+                  }}
+                />
               </div>
             )}
 

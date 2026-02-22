@@ -752,6 +752,7 @@ export function PostDetailView({
           message={message}
           allMessages={allMessages}
           channelName={channelName}
+          mediaFileMap={mediaFileMap}
           onClose={() => setShowShare(false)}
         />
       )}
