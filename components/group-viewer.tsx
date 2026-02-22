@@ -21,6 +21,8 @@ import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
 import { MemberAnalyticsView } from "./member-analytics-view"
+import { ThreadedView } from "./threaded-view"
+import { GitBranch } from "lucide-react"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -48,8 +50,8 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
     showLinkPreviews: true,
   })
 
-  // View mode: chronological vs topic-based
-  const [viewMode, setViewMode] = useState<"chronological" | "topics">("chronological")
+  // View mode: chronological vs topic-based vs threaded
+  const [viewMode, setViewMode] = useState<"chronological" | "topics" | "threaded">("chronological")
   const [activeTopic, setActiveTopic] = useState<number | null>(null)
 
   const stats = useMemo(() => computeGroupStats(data), [data])
@@ -171,10 +173,19 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
                 <List className="h-3.5 w-3.5" />
                 Topics
               </button>
+              <button
+                onClick={() => setViewMode("threaded")}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                  viewMode === "threaded" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GitBranch className="h-3.5 w-3.5" />
+                Threaded
+              </button>
             </div>
 
-            {/* Topic pills in topic mode */}
-            {viewMode === "topics" && (
+            {/* Topic pills in topic and threaded modes */}
+            {(viewMode === "topics" || viewMode === "threaded") && (
               <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none flex-1">
                 <button
                   onClick={() => setActiveTopic(null)}
@@ -218,19 +229,32 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         <HashtagHeader hashtag={activeHashtag} messages={filteredMessages} onClear={clearHashtag} />
       )}
 
-      <GroupMasonryGrid
-        monthGroups={monthGroups}
-        messageMap={messageMap}
-        topics={topics}
-        onHashtagClick={handleHashtagClick}
-        mediaFileMap={mediaFileMap}
-        onMonthClick={openCalendar}
-        onPostClick={openPost}
-        showMedia={displayToggles.showMedia}
-        showLinkPreviews={displayToggles.showLinkPreviews}
-        viewMode={viewMode}
-        activeTopic={activeTopic}
-      />
+      {viewMode === "threaded" ? (
+        <ThreadedView
+          messages={filteredMessages}
+          topics={topics}
+          activeTopic={activeTopic}
+          mediaFileMap={mediaFileMap}
+          onPostClick={openPost}
+          onHashtagClick={handleHashtagClick}
+          showMedia={displayToggles.showMedia}
+          showLinkPreviews={displayToggles.showLinkPreviews}
+        />
+      ) : (
+        <GroupMasonryGrid
+          monthGroups={monthGroups}
+          messageMap={messageMap}
+          topics={topics}
+          onHashtagClick={handleHashtagClick}
+          mediaFileMap={mediaFileMap}
+          onMonthClick={openCalendar}
+          onPostClick={openPost}
+          showMedia={displayToggles.showMedia}
+          showLinkPreviews={displayToggles.showLinkPreviews}
+          viewMode={viewMode}
+          activeTopic={activeTopic}
+        />
+      )}
 
       {/* Stats overlay */}
       {statsOpen && (

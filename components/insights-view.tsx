@@ -31,6 +31,8 @@ import {
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
 import { ActivityHeatmap } from "./activity-heatmap"
+import { computeMemberStats, type MemberStat } from "@/lib/group-analytics"
+import { Users, MessageSquare as MsgIcon, Reply as ReplyIcon } from "lucide-react"
 
 interface InsightsViewProps {
   messages: TelegramMessage[]
@@ -354,6 +356,234 @@ function InsightTooltip({
   )
 }
 
+// ─── Stable member color ────────────────────────────────────────────────────
+
+const MEMBER_PALETTE = [
+  "oklch(0.75 0.15 180)",
+  "oklch(0.75 0.15 280)",
+  "oklch(0.75 0.15 30)",
+  "oklch(0.7 0.15 140)",
+  "oklch(0.7 0.15 350)",
+  "oklch(0.75 0.15 230)",
+  "oklch(0.7 0.15 60)",
+  "oklch(0.7 0.15 310)",
+]
+
+function memberColor(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
+  return MEMBER_PALETTE[Math.abs(h) % MEMBER_PALETTE.length]
+}
+
+// ─── Member Breakdown ───────────────────────────────────────────────────────
+
+function MemberBreakdownSection({
+  members,
+  primaryColor,
+}: {
+  members: MemberStat[]
+  primaryColor: string
+}) {
+  const top10 = members.slice(0, 10)
+  const maxMessages = top10[0]?.messageCount || 1
+
+  // Compute share of voice
+  const totalMessages = members.reduce((s, m) => s + m.messageCount, 0)
+
+  // Activity diversity: how many different hours each person posts in
+  const topContributor = top10[0]
+  const topReactor = [...members].sort((a, b) => b.reactionsSent - a.reactionsSent)[0]
+  const longestWriter = [...members].sort((a, b) => b.avgMessageLength - a.avgMessageLength)[0]
+
+  return (
+    <section>
+      <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
+        <Users className="h-3.5 w-3.5" />
+        Member Breakdown
+      </h2>
+
+      {/* Quick member highlights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        {topContributor && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Top Contributor</p>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-background shrink-0"
+                style={{ backgroundColor: memberColor(topContributor.name) }}
+              >
+                {topContributor.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{topContributor.name}</p>
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  {topContributor.messageCount.toLocaleString()} msgs ({Math.round((topContributor.messageCount / totalMessages) * 100)}%)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {topReactor && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Most Reactions Sent</p>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-background shrink-0"
+                style={{ backgroundColor: memberColor(topReactor.name) }}
+              >
+                {topReactor.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{topReactor.name}</p>
+                <p className="text-[10px] text-muted-foreground font-mono">{topReactor.reactionsSent.toLocaleString()} reactions sent</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {longestWriter && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Longest Messages</p>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-background shrink-0"
+                style={{ backgroundColor: memberColor(longestWriter.name) }}
+              >
+                {longestWriter.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{longestWriter.name}</p>
+                <p className="text-[10px] text-muted-foreground font-mono">{longestWriter.avgMessageLength} avg chars/msg</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Top 10 member bar chart */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-border bg-secondary/30 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+          <div className="col-span-1">#</div>
+          <div className="col-span-3">Member</div>
+          <div className="col-span-2 text-right">Messages</div>
+          <div className="col-span-1 text-right">Replies</div>
+          <div className="col-span-2 text-right">Reactions</div>
+          <div className="col-span-3">Share</div>
+        </div>
+        {top10.map((member, i) => {
+          const pct = Math.round((member.messageCount / totalMessages) * 100)
+          const color = memberColor(member.name)
+          return (
+            <div
+              key={member.id}
+              className="grid grid-cols-12 gap-2 items-center px-4 py-2.5 border-b border-border/40 last:border-b-0"
+            >
+              <div className="col-span-1 text-xs font-mono text-muted-foreground/50">{i + 1}</div>
+              <div className="col-span-3 flex items-center gap-2 min-w-0">
+                <div
+                  className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-background shrink-0"
+                  style={{ backgroundColor: color }}
+                >
+                  {member.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-medium text-foreground truncate">{member.name}</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-xs font-mono text-foreground">{member.messageCount.toLocaleString()}</span>
+              </div>
+              <div className="col-span-1 text-right">
+                <span className="text-xs font-mono text-muted-foreground">{member.repliesCount}</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {member.reactionsReceived}
+                  {member.topEmojisUsed[0] && (
+                    <span className="ml-1">{member.topEmojisUsed[0].emoji}</span>
+                  )}
+                </span>
+              </div>
+              <div className="col-span-3 flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${(member.messageCount / maxMessages) * 100}%`,
+                      backgroundColor: color,
+                      opacity: 0.7,
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground w-8 text-right shrink-0">{pct}%</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Activity heatmap per top members */}
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {top10.slice(0, 4).map((member) => {
+          const color = memberColor(member.name)
+          const max = Math.max(...member.topHours, 1)
+          const peakHour = member.topHours.indexOf(Math.max(...member.topHours))
+          const activeHoursCount = member.topHours.filter((h) => h > 0).length
+
+          return (
+            <div key={member.id} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div
+                  className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-background"
+                  style={{ backgroundColor: color }}
+                >
+                  {member.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-semibold text-foreground">{member.name}</span>
+                <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+                  peak: {peakHour}:00
+                </span>
+              </div>
+
+              {/* Hourly sparkline */}
+              <div className="flex items-end gap-px h-10 w-full mb-1.5">
+                {member.topHours.map((count, hour) => (
+                  <div
+                    key={hour}
+                    className="flex-1 rounded-t-sm transition-all"
+                    style={{
+                      height: `${(count / max) * 100}%`,
+                      minHeight: count > 0 ? 2 : 0,
+                      backgroundColor: color,
+                      opacity: hour === peakHour ? 0.9 : 0.35,
+                    }}
+                    title={`${hour}:00 - ${count} messages`}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[9px] text-muted-foreground/40 font-mono">0:00</span>
+                <span className="text-[9px] text-muted-foreground/40 font-mono">12:00</span>
+                <span className="text-[9px] text-muted-foreground/40 font-mono">23:00</span>
+              </div>
+
+              {/* Mini stats */}
+              <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border/40">
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <MsgIcon className="h-3 w-3" />{member.messageCount} msgs
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <ReplyIcon className="h-3 w-3" />{member.repliesCount} replies
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {activeHoursCount}h active
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function InsightsView({ messages, onClose }: InsightsViewProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -371,6 +601,19 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
   }, [])
 
   const data = useMemo(() => computeInsightsData(messages), [messages])
+
+  // Detect group mode: multiple unique senders
+  const memberStats = useMemo(() => {
+    const senders = new Set<string>()
+    for (const m of messages) {
+      if (m.type === "message" && m.from) senders.add(m.from)
+      if (senders.size > 2) break
+    }
+    if (senders.size > 2) return computeMemberStats(messages)
+    return null
+  }, [messages])
+
+  const isGroup = memberStats !== null && memberStats.length > 1
 
   const primaryColor = "oklch(0.7 0.15 180)"
   const mutedColor = "oklch(0.35 0.02 260)"
@@ -419,6 +662,11 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           </h2>
           <ActivityHeatmap messages={messages} />
         </section>
+
+        {/* Per-member Breakdown (groups only) */}
+        {isGroup && memberStats && (
+          <MemberBreakdownSection members={memberStats} primaryColor={primaryColor} />
+        )}
 
         {/* Key Insights cards */}
         <section>
