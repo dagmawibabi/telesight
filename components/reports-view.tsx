@@ -183,24 +183,44 @@ export function ReportsView({ messages, onClose }: ReportsViewProps) {
             <div className="rounded-xl border border-border bg-card p-6 mb-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-xl font-semibold">{report.report.title}</h2>
+                  <h2 className="text-xl font-semibold">{report.report?.title || "Analysis Report"}</h2>
                   <p className="text-sm text-muted-foreground">
                     Generated: {new Date(report.timestamp).toLocaleString()}
                   </p>
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    report.report.riskLevel === "high"
+                    report.report?.riskLevel === "high"
                       ? "bg-red-500/10 text-red-500"
-                      : report.report.riskLevel === "medium"
+                      : report.report?.riskLevel === "medium"
                       ? "bg-yellow-500/10 text-yellow-500"
                       : "bg-green-500/10 text-green-500"
                   }`}
                 >
-                  {report.report.riskLevel.toUpperCase()} RISK
+                  {(report.report?.riskLevel || "low").toUpperCase()} RISK
                 </span>
               </div>
-              <p className="text-muted-foreground">{report.report.summary}</p>
+              <p className="text-muted-foreground">{report.report?.summary || "Analysis completed"}</p>
+
+              {/* Key Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="text-2xl font-bold">{report.stats?.totalMessages || 0}</div>
+                  <div className="text-xs text-muted-foreground">Messages</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="text-2xl font-bold text-red-500">{report.stats?.conflicts || 0}</div>
+                  <div className="text-xs text-muted-foreground">Conflicts</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="text-2xl font-bold text-purple-500">{report.stats?.manipulation || 0}</div>
+                  <div className="text-xs text-muted-foreground">Manipulation</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="text-2xl font-bold text-orange-500">{report.stats?.fraudDetected || 0}</div>
+                  <div className="text-xs text-muted-foreground">Fraud</div>
+                </div>
+              </div>
             </div>
 
             {/* Download Options */}
@@ -243,7 +263,7 @@ export function ReportsView({ messages, onClose }: ReportsViewProps) {
               <h3 className="font-semibold mb-4">Report Preview</h3>
               <div className="prose prose-sm max-w-none dark:prose-invert">
                 <div className="space-y-4">
-                  {report.report.sections?.map((section: any, i: number) => (
+                  {report.report?.sections?.map((section: any, i: number) => (
                     <div key={i}>
                       <h4 className="font-medium text-foreground">{section.title}</h4>
                       <p className="text-muted-foreground">{section.content}</p>
@@ -251,7 +271,7 @@ export function ReportsView({ messages, onClose }: ReportsViewProps) {
                   ))}
                 </div>
 
-                {report.report.recommendations?.length > 0 && (
+                {report.report?.recommendations && report.report.recommendations.length > 0 && (
                   <div className="mt-6">
                     <h4 className="font-medium text-foreground mb-2">Recommendations</h4>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
