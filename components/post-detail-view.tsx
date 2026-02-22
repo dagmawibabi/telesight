@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import type { TelegramMessage, MessageText } from "@/lib/telegram-types"
 import { useMediaUrl, type MediaFileMap } from "@/hooks/use-media-url"
+import { LinkPreview } from "./link-preview"
 
 interface PostDetailViewProps {
   message: TelegramMessage
@@ -403,24 +404,15 @@ export function PostDetailView({
           </div>
         )}
 
-        {/* Links */}
+        {/* Links with rich previews */}
         {uniqueLinks.length > 0 && (
           <div className="mb-8">
             <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
               Links ({uniqueLinks.length})
             </h3>
-            <div className="flex flex-col gap-2">
-              {uniqueLinks.map((link, i) => (
-                <a
-                  key={i}
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg bg-card border border-border px-4 py-2.5 text-sm text-primary hover:border-primary/30 transition-colors group"
-                >
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary" />
-                  <span className="truncate">{link}</span>
-                </a>
+            <div className="flex flex-col gap-3">
+              {uniqueLinks.map((link) => (
+                <LinkPreview key={link} url={link} />
               ))}
             </div>
           </div>
