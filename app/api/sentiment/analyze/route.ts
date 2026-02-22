@@ -59,9 +59,6 @@ export async function POST(req: NextRequest) {
           })
 
           if (!response.ok) {
-            if (response.status === 402 || response.status === 503) {
-              return await fallbackAnalysis(msg)
-            }
             return { id: msg.id, text: msg.text, sentiment: "neutral", score: 0.5, error: `API: ${response.status}` }
           }
 
@@ -72,9 +69,9 @@ export async function POST(req: NextRequest) {
           let result
           try {
             const jsonMatch = content.match(/\{[^}]+\}/)
-            result = jsonMatch ? JSON.parse(jsonMatch[0]) : analyzeLocally(msg.text)
+            result = jsonMatch ? JSON.parse(jsonMatch[0]) : { sentiment: "neutral", score: 0.5, reason: "Parse error" }
           } catch {
-            result = analyzeLocally(msg.text)
+            result = { sentiment: "neutral", score: 0.5, reason: "Parse error" }
           }
 
           return {
@@ -104,41 +101,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Local keyword-based analysis as fallback
-function analyzeLocally(text: string) {
-  const lower = text.toLowerCase()
-  const negativeWords = ["hate", "annoying", "terrible", "awful", "frustrating", "bad", "worst", "angry", "mad", "ridiculous", "stupid", "suck"]
-  const positiveWords = ["love", "amazing", "great", "awesome", "thanks", "happy", "excited", "good", "fantastic", "perfect"]
-  
-  const negCount = negativeWords.filter(w => lower.includes(w)).length
-  const posCount = positiveWords.filter(w => lower.includes(w)).length
-  const hasPosEmoji = /[🚀💪❤️😊😍🎉👍✨🔥]/u.test(text)
-  const hasNegEmoji = /[😠😤😡💔😢😭😒]/u.test(text)
-  const shouting = /[A-Z]{3,}/.test(text)
-  const exclaims = /!{2,}/.test(text)
-  
-  let score = 0.5, sentiment = "neutral", reason = ""
-  
-  if (negCount > 0 || hasNegEmoji || (shouting && exclaims)) {
-    score = Math.max(0, 0.5 - (negCount * 0.15) - (hasNegEmoji ? 0.2 : 0) - (shouting ? 0.1 : 0))
-    sentiment = "negative"
-    reason = `${negCount} negative indicators${hasNegEmoji ? " + emoji" : ""}`
-  } else if (posCount > 0 || hasPosEmoji) {
-    score = Math.min(1, 0.5 + (posCount * 0.15) + (hasPosEmoji ? 0.2 : 0))
-    sentiment = "positive"
-    reason = `${posCount} positive indicators${hasPosEmoji ? " + emoji" : ""}`
-  } else {
-    reason = "Neutral tone"
-  }
-  
-  return { sentiment, score, reason }
-}
-
-async function fallbackAnalysis(msg: { text: string; id: string }) {
-  const result = analyzeLocally(msg.text)
-  return { id: msg.id, text: msg.text, ...result, fallback: true }
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const token = searchParams.get("token")
@@ -157,7 +119,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (response.status === 503) return NextResponse.json({ status: "loading" })
-    if (response.status === 402) return NextResponse.json({ status: "ready", message: "Pro required. Local fallback available." })
+    if (response.status === 402) return NextResponse.json({ status: "pro_required", message: "HF Pro required" })
     if (response.ok) return NextResponse.json({ status: "ready", message: "API ready with scoring rules" })
     return NextResponse.json({ status: "error", message: `API: ${response.status}` }, { status: response.status })
   } catch (error) {
