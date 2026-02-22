@@ -23,6 +23,7 @@ import {
   GitBranch,
   MessageCircle,
   Flame,
+  Brain,
 } from "lucide-react"
 import type { TelegramExport, TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText, getDMParticipants, computeStats } from "@/lib/telegram-types"
@@ -36,6 +37,7 @@ import { MediaGallery } from "./media-gallery"
 import { CalendarView } from "./calendar-view"
 import { ThreadedView } from "./threaded-view"
 import { ConflictView } from "./conflict-view"
+import { ManipulationView } from "./manipulation-view"
 
 interface DMViewerProps {
   data: TelegramExport
@@ -222,6 +224,7 @@ function DMHeader({
   onStatsClick: () => void
   onInsightsClick: () => void
   onConflictClick: () => void
+  onManipulationClick: () => void
   onGraphClick: () => void
   onGalleryClick: () => void
   onCalendarClick: () => void
@@ -281,6 +284,13 @@ function DMHeader({
             >
               <Flame className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Conflicts</span>
+            </button>
+            <button
+              onClick={onManipulationClick}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
+            >
+              <Brain className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Behavior</span>
             </button>
             <button
               onClick={onGraphClick}
@@ -347,6 +357,7 @@ export function DMViewer({
   const [statsOpen, setStatsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
+  const [manipulationOpen, setManipulationOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
@@ -439,6 +450,7 @@ export function DMViewer({
           onStatsClick={() => setStatsOpen(true)}
           onInsightsClick={() => setInsightsOpen(true)}
           onConflictClick={() => setConflictOpen(true)}
+          onManipulationClick={() => setManipulationOpen(true)}
           onGraphClick={() => setGraphOpen(true)}
           onGalleryClick={() => setGalleryOpen(true)}
           onCalendarClick={() => {
@@ -597,6 +609,19 @@ export function DMViewer({
           onClose={() => setConflictOpen(false)}
           onPostClick={(msg) => {
             setConflictOpen(false)
+            setSelectedPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Manipulation detection overlay */}
+      {manipulationOpen && (
+        <ManipulationView
+          messages={data.messages}
+          onClose={() => setManipulationOpen(false)}
+          onPostClick={(msg) => {
+            setManipulationOpen(false)
             setSelectedPost(msg)
           }}
           mediaFileMap={mediaFileMap}

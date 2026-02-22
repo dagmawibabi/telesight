@@ -15,6 +15,7 @@ import {
   Users,
   Hash,
   Flame,
+  Brain,
 } from "lucide-react"
 import type { GroupStats } from "@/lib/group-analytics"
 
@@ -26,6 +27,7 @@ interface GroupHeaderProps {
   onInsightsClick?: () => void
   onMembersClick?: () => void
   onConflictClick?: () => void
+  onManipulationClick?: () => void
 }
 
 export function GroupHeader({
@@ -36,6 +38,7 @@ export function GroupHeader({
   onInsightsClick,
   onMembersClick,
   onConflictClick,
+  onManipulationClick,
 }: GroupHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
@@ -125,6 +128,15 @@ export function GroupHeader({
               >
                 <Flame className="h-3.5 w-3.5" />
                 Conflicts
+              </button>
+            )}
+            {onManipulationClick && (
+              <button
+                onClick={onManipulationClick}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                Behavior
               </button>
             )}
           </div>

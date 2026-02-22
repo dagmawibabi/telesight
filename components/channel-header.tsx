@@ -13,6 +13,7 @@ import {
   Images,
   Lightbulb,
   Flame,
+  Brain,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
@@ -23,9 +24,10 @@ interface ChannelHeaderProps {
   onGalleryClick?: () => void
   onInsightsClick?: () => void
   onConflictClick?: () => void
+  onManipulationClick?: () => void
 }
 
-export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick, onConflictClick }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick, onConflictClick, onManipulationClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -129,6 +131,15 @@ export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClic
               >
                 <Flame className="h-3.5 w-3.5" />
                 Conflicts
+              </button>
+            )}
+            {onManipulationClick && (
+              <button
+                onClick={onManipulationClick}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                Behavior
               </button>
             )}
           </div>

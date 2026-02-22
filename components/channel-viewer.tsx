@@ -12,7 +12,7 @@ import {
   groupByMonth,
 } from "@/lib/telegram-types"
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
-import { Flame } from "lucide-react"
+import { Flame, Brain } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"
@@ -22,6 +22,7 @@ import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
 import { ConflictView } from "./conflict-view"
+import { ManipulationView } from "./manipulation-view"
 
 
 interface ChannelViewerProps {
@@ -45,6 +46,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
+  const [manipulationOpen, setManipulationOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -167,6 +169,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onConflictClick={() => setConflictOpen(true)}
+        onManipulationClick={() => setManipulationOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -246,6 +249,19 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           onClose={() => setConflictOpen(false)}
           onPostClick={(msg) => {
             setConflictOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Manipulation detection overlay */}
+      {manipulationOpen && (
+        <ManipulationView
+          messages={data.messages}
+          onClose={() => setManipulationOpen(false)}
+          onPostClick={(msg) => {
+            setManipulationOpen(false)
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}
