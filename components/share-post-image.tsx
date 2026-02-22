@@ -68,6 +68,8 @@ export function SharePostImage({ message, channelName, onClose }: SharePostImage
       quality: 1,
       pixelRatio: 2,
       cacheBust: true,
+      fontEmbedCSS: "",
+      skipFonts: true,
     })
   }, [])
 
