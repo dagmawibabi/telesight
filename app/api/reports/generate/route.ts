@@ -75,32 +75,61 @@ export async function POST(req: NextRequest) {
       let manipulation = 0
       let fraudDetected = 0
 
-      // Analyze up to 20 messages (to avoid timeout)
-      const messagesToAnalyze = messages.slice(-20)
-      
-      // Run all analyses in parallel
-      const analysisPromises = messagesToAnalyze.map(async (msg: any) => {
-        const text = msg.text || ""
-        
-        const [conflictResult, manipResult, fraudResult] = await Promise.all([
-          analyzeWithHF(CONFLICT_PROMPT, text, token),
-          analyzeWithHF(MANIPULATION_PROMPT, text, token),
-          analyzeWithHF(FRAUD_PROMPT, text, token)
-        ])
+      // Call dedicated analysis endpoints that are working
+      const messageData = messages
+        .filter((m: any) => m.type === "message" || !m.type)
+        .slice(-50)
+        .map((m: any) => ({
+          id: m.id?.toString() || Math.random().toString(),
+          text: m.text || "",
+          from: m.from || "Unknown",
+          date: m.date,
+        }))
 
-        return {
-          conflict: conflictResult?.conflict && conflictResult.score > 0.4,
-          manipulation: manipResult?.manipulation && manipResult.score > 0.4,
-          fraud: fraudResult?.fraudType !== "none" && fraudResult?.score > 0.4
+      // Call conflict API
+      try {
+        const conflictRes = await fetch("http://localhost:3000/api/conflict/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messageData, token }),
+        })
+        if (conflictRes.ok) {
+          const conflictData = await conflictRes.json()
+          conflicts = conflictData.results?.filter((r: any) => r.conflict)?.length || 0
         }
-      })
+      } catch (e) {
+        console.error("Conflict analysis failed:", e)
+      }
 
-      const results = await Promise.all(analysisPromises)
-      
-      // Count results
-      conflicts = results.filter(r => r.conflict).length
-      manipulation = results.filter(r => r.manipulation).length
-      fraudDetected = results.filter(r => r.fraud).length
+      // Call manipulation API
+      try {
+        const manipRes = await fetch("http://localhost:3000/api/manipulation/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messageData, token }),
+        })
+        if (manipRes.ok) {
+          const manipData = await manipRes.json()
+          manipulation = manipData.results?.filter((r: any) => r.manipulation)?.length || 0
+        }
+      } catch (e) {
+        console.error("Manipulation analysis failed:", e)
+      }
+
+      // Call fraud API
+      try {
+        const fraudRes = await fetch("http://localhost:3000/api/fraud/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messageData, token }),
+        })
+        if (fraudRes.ok) {
+          const fraudData = await fraudRes.json()
+          fraudDetected = fraudData.results?.filter((r: any) => r.fraudType !== "none" && r.score > 0.4)?.length || 0
+        }
+      } catch (e) {
+        console.error("Fraud analysis failed:", e)
+      }
 
       stats = {
         totalMessages: messages.length,
