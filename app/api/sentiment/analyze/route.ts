@@ -5,8 +5,8 @@ const HF_INFERENCE_API = "https://api-inference.huggingface.co/models"
 
 // Recommended models for sentiment analysis
 const SENTIMENT_MODELS = {
-  // General sentiment analysis - modern replacement
-  sentiment: "cardiffnlp/twitter-roberta-base-sentiment-latest",
+  // Use simple text classification model
+  sentiment: "distilbert-base-uncased-finetuned-sst-2-english",
   // Emotion detection
   emotion: "j-hartmann/emotion-english-distilroberta-base",
   // Toxicity detection

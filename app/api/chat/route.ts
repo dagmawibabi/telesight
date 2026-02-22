@@ -5,12 +5,12 @@ const HF_INFERENCE_API = "https://api-inference.huggingface.co/models"
 
 // Recommended models for chat/conversation
 const CHAT_MODELS = {
-  // Microsoft's Phi-2 - small but capable
-  conversational: "microsoft/phi-2",
-  // Google's Flan-T5 Large - better quality
-  flan: "google/flan-t5-large",
-  // Meta's CodeLlama for technical queries
-  llama: "codellama/CodeLlama-7b-hf",
+  // GPT-2 is usually available on free tier
+  conversational: "gpt2",
+  // T5 base for text generation
+  flan: "t5-base",
+  // Fallback to GPT-2
+  llama: "gpt2",
 }
 
 // Build a context-aware prompt from message history
