@@ -227,9 +227,10 @@ function DMHeader({
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-      <div className="mx-auto max-w-3xl px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 py-3">
+        {/* Row 1: Avatar + info + action buttons */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             {/* Dual avatar */}
             <div className="relative flex items-center">
               <div
@@ -255,47 +256,47 @@ function DMHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={onStatsClick}
               className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
             >
               <BarChart3 className="h-3.5 w-3.5" />
-              Stats
+              <span className="hidden sm:inline">Stats</span>
             </button>
             <button
               onClick={onInsightsClick}
               className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              Insights
+              <span className="hidden sm:inline">Insights</span>
             </button>
             <button
               onClick={onGraphClick}
               className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
             >
               <Share2 className="h-3.5 w-3.5" />
-              Graph
+              <span className="hidden sm:inline">Graph</span>
             </button>
             <button
               onClick={onGalleryClick}
               className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
             >
               <ImageIcon className="h-3.5 w-3.5" />
-              Gallery
+              <span className="hidden sm:inline">Gallery</span>
             </button>
             <button
               onClick={onCalendarClick}
               className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
             >
               <Calendar className="h-3.5 w-3.5" />
-              Calendar
+              <span className="hidden sm:inline">Calendar</span>
             </button>
           </div>
         </div>
 
-        {/* Quick stats bar */}
-        <div className="mt-2.5 flex items-center gap-4">
+        {/* Row 2: Quick stats */}
+        <div className="mt-2 flex items-center gap-4">
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <MessageSquare className="h-3 w-3" />
             {messageCount.toLocaleString()} messages
@@ -304,7 +305,6 @@ function DMHeader({
             <Heart className="h-3 w-3" />
             {totalReactions.toLocaleString()} reactions
           </span>
-          {/* Per-person count */}
           {participants.map((p, i) => {
             const color = i === 0 ? "oklch(0.7 0.15 180)" : "oklch(0.7 0.15 30)"
             return (
@@ -435,35 +435,10 @@ export function DMViewer({
         }}
       />
 
-      {/* Search bar */}
-      {showSearch && (
-        <div className="sticky top-[82px] z-20 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="mx-auto max-w-3xl px-4 py-2 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Search messages..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/50"
-              autoFocus
-            />
-            {searchQuery && (
-              <span className="text-xs text-muted-foreground font-mono">{filteredMessages.length}</span>
-            )}
-            <button
-              onClick={() => { setShowSearch(false); setSearchQuery("") }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* View mode toggle */}
-      <div className="sticky top-[82px] z-[19] border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-3xl px-4 py-1.5 flex items-center gap-2">
+      {/* Secondary toolbar: toggle + search */}
+      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-5xl px-4 md:px-6 py-1.5 flex items-center gap-3">
+          {/* View mode toggle */}
           <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-0.5">
             <button
               onClick={() => setViewMode("bubble")}
@@ -484,10 +459,37 @@ export function DMViewer({
               Threaded
             </button>
           </div>
-          {searchQuery && (
-            <span className="text-[10px] text-muted-foreground font-mono ml-auto">
-              {filteredMessages.length} results
-            </span>
+
+          {/* Search */}
+          {showSearch ? (
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                placeholder="Search messages..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/50 min-w-0"
+                autoFocus
+              />
+              {searchQuery && (
+                <span className="text-[10px] text-muted-foreground font-mono shrink-0">{filteredMessages.length} results</span>
+              )}
+              <button
+                onClick={() => { setShowSearch(false); setSearchQuery("") }}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSearch(true)}
+              className="ml-auto flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Search
+            </button>
           )}
         </div>
       </div>
@@ -506,7 +508,7 @@ export function DMViewer({
             showLinkPreviews={true}
           />
         ) : (
-          <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col gap-1.5">
+          <div className="mx-auto max-w-5xl px-4 md:px-6 py-6 flex flex-col gap-1.5">
             {messagesWithDates.map((item, idx) => {
               if (item.type === "date") {
                 return (
