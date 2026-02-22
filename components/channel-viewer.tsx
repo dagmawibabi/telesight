@@ -12,7 +12,6 @@ import {
   groupByMonth,
 } from "@/lib/telegram-types"
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
-import { Flame, Brain } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"

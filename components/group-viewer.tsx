@@ -13,7 +13,6 @@ import {
   type Topic,
 } from "@/lib/group-analytics"
 import { ArrowLeft, FolderOpen, Check, List, Calendar } from "lucide-react"
-import { Flame, Brain } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { CalendarView } from "./calendar-view"
 import { PostDetailView } from "./post-detail-view"

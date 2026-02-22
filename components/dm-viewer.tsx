@@ -368,7 +368,7 @@ export function DMViewer({
   const [viewMode, setViewMode] = useState<"bubble" | "threaded">("bubble")
 
   const participants = useMemo(
-    () => (getDMParticipants(data.messages) ?? [data.name, "You"]) as [string, string],
+    () => getDMParticipants(data.messages) || [data.name, "You"],
     [data]
   )
 
