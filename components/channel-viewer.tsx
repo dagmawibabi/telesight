@@ -209,6 +209,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           initialYear={calendarOpen.year}
           initialMonth={calendarOpen.month}
           onClose={() => setCalendarOpen(null)}
+          onPostClick={openPost}
         />
       )}
 

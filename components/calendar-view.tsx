@@ -21,6 +21,7 @@ interface CalendarViewProps {
   initialMonth: number
   onClose: () => void
   onDayClick?: (date: Date, messages: TelegramMessage[]) => void
+  onPostClick?: (message: TelegramMessage) => void
 }
 
 interface DayStats {
@@ -65,6 +66,7 @@ export function CalendarView({
   initialMonth,
   onClose,
   onDayClick,
+  onPostClick,
 }: CalendarViewProps) {
   const [year, setYear] = useState(initialYear)
   const [month, setMonth] = useState(initialMonth)
@@ -440,9 +442,10 @@ export function CalendarView({
                 }
 
                 return (
-                  <div
+                  <button
                     key={msg.id}
-                    className="flex gap-3 rounded-lg bg-secondary/30 px-3 py-2 text-xs"
+                    onClick={() => onPostClick?.(msg)}
+                    className="flex gap-3 rounded-lg bg-secondary/30 px-3 py-2 text-xs text-left transition-colors hover:bg-secondary/60 cursor-pointer w-full"
                   >
                     <span className="text-muted-foreground/60 font-mono shrink-0 pt-0.5">
                       {time}
@@ -455,7 +458,7 @@ export function CalendarView({
                         {reactionCount.toLocaleString()}
                       </span>
                     )}
-                  </div>
+                  </button>
                 )
               })}
               {selectedDayStats.messages.length > 20 && (
