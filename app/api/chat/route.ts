@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Hugging Face Inference API
-const HF_INFERENCE_API = "https://api-inference.huggingface.co/models"
+// Hugging Face Inference Providers endpoint (for gpt-oss models)
+const HF_INFERENCE_API = "https://router.huggingface.co/v1/chat/completions"
 
-// Recommended models for chat/conversation
+// Recommended models for chat - using gpt-oss-120b via Inference Providers
 const CHAT_MODELS = {
-  // DistilGPT2 - smaller, usually available on free tier
-  conversational: "distilgpt2",
-  // DistilGPT2
-  flan: "distilgpt2",
-  // DistilGPT2
-  llama: "distilgpt2",
+  // gpt-oss-120b via Cerebras (fastest)
+  conversational: "openai/gpt-oss-120b:cerebras",
+  // gpt-oss-120b via Fireworks AI
+  flan: "openai/gpt-oss-120b:fireworks-ai",
+  // gpt-oss-120b via Together AI
+  llama: "openai/gpt-oss-120b:together",
 }
 
 // Build a context-aware prompt from message history
@@ -40,26 +40,31 @@ export async function POST(req: NextRequest) {
 
     const selectedModel = CHAT_MODELS[model as keyof typeof CHAT_MODELS] || CHAT_MODELS.flan
 
-    // Build prompt with context
-    const prompt = messages?.length 
-      ? buildPrompt(messages, question)
-      : question
+    // Build messages array for chat completions
+    const chatMessages = messages?.length
+      ? [
+          { role: "system", content: "You are a helpful assistant analyzing Telegram chat data." },
+          ...messages.map((msg: string) => ({ role: "user", content: msg })),
+          { role: "user", content: question }
+        ]
+      : [
+          { role: "system", content: "You are a helpful assistant analyzing Telegram chat data." },
+          { role: "user", content: question }
+        ]
 
     try {
-      const response = await fetch(`${HF_INFERENCE_API}/${selectedModel}`, {
+      const response = await fetch(HF_INFERENCE_API, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          inputs: prompt,
-          parameters: {
-            max_length: 512,
-            temperature: 0.7,
-            top_p: 0.9,
-            do_sample: true,
-          },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: chatMessages,
+          max_tokens: 512,
+          temperature: 0.7,
+          top_p: 0.9,
         }),
       })
 
@@ -81,11 +86,11 @@ export async function POST(req: NextRequest) {
           )
         }
 
-        // Handle 410 - model deprecated/unavailable
-        if (response.status === 410) {
+        // Handle 402 - payment required (Pro account needed)
+        if (response.status === 402) {
           return NextResponse.json({
-            response: "The AI model is currently unavailable. The model may have been deprecated. Please try a different model or check the Hugging Face model hub.",
-            error: "Model deprecated (410)",
+            response: "This model requires a Hugging Face Pro subscription. Please upgrade your account or use a different model.",
+            error: "Payment required (402)",
             fallback: true,
           })
         }
@@ -95,16 +100,11 @@ export async function POST(req: NextRequest) {
 
       const data = await response.json()
 
-      // Parse different model response formats
+      // Parse OpenAI-compatible response
       let reply = ""
-      if (Array.isArray(data) && data.length > 0) {
-        reply = data[0].generated_text || data[0].summary_text || ""
-      } else if (typeof data === "object") {
-        reply = data.generated_text || data.summary_text || data.answer || JSON.stringify(data)
+      if (data.choices && data.choices.length > 0) {
+        reply = data.choices[0].message?.content || ""
       }
-
-      // Clean up the response - remove the prompt echo if present
-      reply = reply.replace(prompt, "").trim()
 
       // Fallback response if empty
       if (!reply) {
@@ -151,15 +151,16 @@ export async function GET(req: NextRequest) {
   const model = CHAT_MODELS[modelType as keyof typeof CHAT_MODELS] || CHAT_MODELS.flan
 
   try {
-    const response = await fetch(`${HF_INFERENCE_API}/${model}`, {
+    const response = await fetch(HF_INFERENCE_API, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ 
-        inputs: "Hello",
-        parameters: { max_length: 10 }
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: "user", content: "Hello" }],
+        max_tokens: 10,
       }),
     })
 
@@ -171,11 +172,11 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Handle 410 - model deprecated
-    if (response.status === 410) {
+    // Handle 402 - payment required
+    if (response.status === 402) {
       return NextResponse.json({
-        status: "ready",
-        message: "Token is valid (model may be deprecated)",
+        status: "pro_required",
+        message: "Hugging Face Pro subscription required for this model",
         model,
       })
     }
