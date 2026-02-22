@@ -7,8 +7,8 @@ const _inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: 'Telegrid - Telegram Channel Viewer',
-  description: 'Import and visualize your Telegram channel exports in a beautiful masonry grid',
+  title: 'Telesight - Telegram Export Viewer',
+  description: 'Import and visualize your Telegram channel, group, and DM exports with rich analytics',
   icons: {
     icon: [
       {

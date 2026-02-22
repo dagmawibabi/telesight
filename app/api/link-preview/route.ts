@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       signal: controller.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; Telegrid/1.0; +https://telegrid.app)",
+          "Mozilla/5.0 (compatible; Telesight/1.0; +https://telesight.app)",
         Accept: "text/html",
       },
       redirect: "follow",

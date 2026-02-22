@@ -148,8 +148,13 @@ function computeWrappedData(messages: TelegramMessage[]): WrappedData {
     avg: b.count > 0 ? Math.round((b.reactions / b.count) * 10) / 10 : 0,
   }))
 
-  const bestHour = hourly.reduce((a, b) => (b.avg > a.avg ? b : a), hourly[0])
-  const bestDay = daily.reduce((a, b) => (b.avg > a.avg ? b : a), daily[0])
+  // For DMs, rank by volume; for channels/groups, rank by avg reactions
+  const bestHour = isDM
+    ? hourly.reduce((a, b) => (hourBuckets[b.hour].count > hourBuckets[a.hour].count ? b : a), hourly[0])
+    : hourly.reduce((a, b) => (b.avg > a.avg ? b : a), hourly[0])
+  const bestDay = isDM
+    ? daily.reduce((a, b) => (dayBuckets[b.day].count > dayBuckets[a.day].count ? b : a), daily[0])
+    : daily.reduce((a, b) => (b.avg > a.avg ? b : a), daily[0])
 
   const formatPerf = Array.from(formatMap.entries())
     .map(([fmt, d]) => ({ format: fmt, avg: d.count > 0 ? Math.round((d.reactions / d.count) * 10) / 10 : 0 }))
@@ -390,8 +395,8 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 22 }}>
             {[
               { label: "Messages", value: stats.totalPosts.toLocaleString() },
-              { label: "Reactions", value: stats.totalReactions.toLocaleString() },
-              { label: stats.isGroup ? "Members" : "Media", value: stats.isGroup ? stats.memberCount.toLocaleString() : stats.totalMedia.toLocaleString() },
+              { label: stats.isDM ? "Media Shared" : "Reactions", value: stats.isDM ? stats.totalMedia.toLocaleString() : stats.totalReactions.toLocaleString() },
+              { label: stats.isGroup ? "Members" : stats.isDM ? "Days Active" : "Media", value: stats.isGroup ? stats.memberCount.toLocaleString() : stats.isDM ? stats.streakDays.toLocaleString() : stats.totalMedia.toLocaleString() },
             ].map((item) => (
               <div key={item.label} style={{
                 background: sectionBg, borderRadius: 12, padding: "14px 12px", border: sectionBorder,
@@ -403,13 +408,17 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
           </div>
 
           {/* Secondary stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
-            {[
+          <div style={{ display: "grid", gridTemplateColumns: stats.isDM ? "1fr 1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
+            {(stats.isDM ? [
+              { label: "Links", value: stats.totalLinks.toLocaleString() },
+              { label: "Reactions", value: stats.totalReactions.toLocaleString() },
+              { label: "Streak", value: `${stats.streakDays} days` },
+            ] : [
               { label: "Media", value: stats.totalMedia.toLocaleString() },
               { label: "Links", value: stats.totalLinks.toLocaleString() },
               { label: "Forwarded", value: stats.totalForwarded.toLocaleString() },
-              { label: "Avg/Post", value: `${stats.avgReactionsPerPost}` },
-            ].map((item) => (
+              { label: stats.isGroup ? "Avg Length" : "Avg/Post", value: stats.isGroup ? `${Math.round(stats.totalPosts > 0 ? stats.totalReactions / stats.totalPosts : 0)}` : `${stats.avgReactionsPerPost}` },
+            ]).map((item) => (
               <div key={item.label} style={{
                 background: "rgba(255,255,255,0.025)", borderRadius: 10, padding: "10px 8px",
                 border: "1px solid rgba(255,255,255,0.04)",
@@ -426,7 +435,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
           }}>
             <div style={labelStyle}>
               <Clock style={{ width: 11, height: 11, color: accentColor }} />
-              Posting Hours
+              {stats.isDM ? "Chat Activity" : "Posting Hours"}
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 44 }}>
               {stats.hourDistribution.map((count, h) => (
@@ -452,24 +461,24 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
             <div style={{ background: sectionBg, borderRadius: 12, padding: 14, border: sectionBorder }}>
               <div style={labelStyle}>
                 <Zap style={{ width: 11, height: 11, color: accentColor }} />
-                Best Hour
+                {stats.isDM ? "Most Active Hour" : "Best Hour"}
               </div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>{stats.bestHour.label}</div>
-              <div style={subtext}>{stats.bestHour.avg} avg reactions</div>
+              <div style={subtext}>{stats.isDM ? `${stats.hourDistribution[stats.bestHour.hour]} messages` : `${stats.bestHour.avg} avg reactions`}</div>
             </div>
 
             {/* Best day */}
             <div style={{ background: sectionBg, borderRadius: 12, padding: 14, border: sectionBorder }}>
               <div style={labelStyle}>
                 <Calendar style={{ width: 11, height: 11, color: accentColor }} />
-                Best Day
+                {stats.isDM ? "Most Active Day" : "Best Day"}
               </div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>{WEEKDAYS[stats.bestDay.day]}</div>
-              <div style={subtext}>{stats.bestDay.avg} avg reactions</div>
+              <div style={subtext}>{stats.isDM ? `${stats.dayDistribution[stats.bestDay.day]} messages` : `${stats.bestDay.avg} avg reactions`}</div>
             </div>
 
-            {/* Top format */}
-            {stats.topFormat && (
+            {/* Top format (channels only) */}
+            {!stats.isDM && stats.topFormat && (
               <div style={{ background: sectionBg, borderRadius: 12, padding: 14, border: sectionBorder }}>
                 <div style={labelStyle}>
                   <ImageIcon style={{ width: 11, height: 11, color: accentColor }} />
@@ -487,7 +496,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
                 Longest Streak
               </div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>{stats.streakDays} day{stats.streakDays !== 1 ? "s" : ""}</div>
-              <div style={subtext}>Consecutive posting</div>
+              <div style={subtext}>{stats.isDM ? "Consecutive chatting" : "Consecutive posting"}</div>
             </div>
           </div>
 
@@ -524,7 +533,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
             }}>
               <div style={labelStyle}>
                 <Heart style={{ width: 11, height: 11, color: accentColor }} />
-                Top Reactions
+                {stats.isDM ? "Reactions Used" : "Top Reactions"}
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 {stats.topReactions.map((r) => (
@@ -588,8 +597,8 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
             </div>
           )}
 
-          {/* Top keywords */}
-          {stats.topKeywords.length > 0 && (
+          {/* Top keywords (channels only) */}
+          {!stats.isDM && stats.topKeywords.length > 0 && (
             <div style={{
               background: sectionBg, borderRadius: 12, padding: 14, border: sectionBorder, marginBottom: 18,
             }}>
@@ -674,7 +683,7 @@ export function InsightsWrapped({ messages, onClose }: InsightsWrappedProps) {
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}>
             <span style={{ fontSize: 9, color: "#3a5060", letterSpacing: "0.05em" }}>
-              TELEGRAM INSIGHTS WRAPPED
+              TELESIGHT WRAPPED
             </span>
           </div>
         </div>

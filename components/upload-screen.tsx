@@ -61,11 +61,11 @@ export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: 
               <div className="h-3 w-3 rounded-sm bg-primary" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Telegrid
+              Telesight
             </h1>
           </div>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
-            Import your Telegram channel or group export to visualize messages,
+            Import your Telegram channel, group, or DM export to visualize messages,
             analytics, and media in a beautiful interface.
           </p>
         </div>

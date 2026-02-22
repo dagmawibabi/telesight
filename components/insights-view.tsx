@@ -928,12 +928,14 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
             <Lightbulb className="h-5 w-5 text-primary" />
             <div>
               <h1 className="text-lg font-semibold text-foreground">
-                {isDM ? "Conversation Insights" : "Content Insights"}
+                {isDM ? "Conversation Insights" : isGroup ? "Group Insights" : "Channel Insights"}
               </h1>
               <p className="text-xs text-muted-foreground">
                 {isDM
                   ? `Analysis of ${data.totalPosts.toLocaleString()} messages between ${dmData?.nameA.split(" ")[0]} & ${dmData?.nameB.split(" ")[0]}`
-                  : `Data-driven recommendations from ${data.totalPosts.toLocaleString()} posts`}
+                  : isGroup
+                    ? `Activity breakdown from ${data.totalPosts.toLocaleString()} messages across ${memberStats?.length || 0} members`
+                    : `Data-driven recommendations from ${data.totalPosts.toLocaleString()} posts`}
               </p>
             </div>
           </div>
@@ -961,7 +963,7 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="h-3.5 w-3.5" />
-            Posting Activity
+            {isDM ? "Chat Activity" : isGroup ? "Group Activity" : "Posting Activity"}
           </h2>
           <ActivityHeatmap messages={messages} />
         </section>
@@ -976,12 +978,12 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           <MemberBreakdownSection members={memberStats} primaryColor={primaryColor} />
         )}
 
-        {/* Key Insights cards (channels only) */}
-        {!isDM && !isGroup && (
+        {/* Key Insights cards (channels and groups - with contextual labels) */}
+        {!isDM && (
           <section>
             <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
               <Zap className="h-3.5 w-3.5" />
-              Key Recommendations
+              {isGroup ? "Activity Insights" : "Key Recommendations"}
             </h2>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.insights.map((insight, i) => (
@@ -1014,11 +1016,12 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           </section>
         )}
 
-        {/* Engagement by Hour chart */}
+        {/* Engagement by Hour chart (channels + groups only) */}
+        {!isDM && (
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
             <Clock className="h-3.5 w-3.5" />
-            Avg Reactions by Posting Hour
+            {isGroup ? "Messages by Hour" : "Avg Reactions by Posting Hour"}
           </h2>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="h-[220px]">
@@ -1052,12 +1055,14 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
             </div>
           </div>
         </section>
+        )}
 
-        {/* Engagement by Day chart */}
+        {/* Engagement by Day chart (channels + groups only) */}
+        {!isDM && (
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5" />
-            Avg Reactions by Day of Week
+            {isGroup ? "Messages by Day of Week" : "Avg Reactions by Day of Week"}
           </h2>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="h-[200px]">
@@ -1090,8 +1095,10 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
             </div>
           </div>
         </section>
+        )}
 
-        {/* Format Performance */}
+        {/* Format Performance (channels only) */}
+        {!isDM && !isGroup && (
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
             <Image className="h-3.5 w-3.5" />
@@ -1147,9 +1154,10 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
             })}
           </div>
         </section>
+        )}
 
-        {/* Post Length Performance */}
-        {data.lengthPerf.length > 0 && (
+        {/* Post Length Performance (channels only) */}
+        {!isDM && !isGroup && data.lengthPerf.length > 0 && (
           <section>
             <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
               <Type className="h-3.5 w-3.5" />
@@ -1181,8 +1189,8 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           </section>
         )}
 
-        {/* Top Keywords */}
-        {data.keywordPerformance.length > 0 && (
+        {/* Top Keywords (channels only) */}
+        {!isDM && !isGroup && data.keywordPerformance.length > 0 && (
           <section>
             <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
               <Hash className="h-3.5 w-3.5" />
