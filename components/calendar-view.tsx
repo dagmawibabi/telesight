@@ -11,7 +11,9 @@ import {
   Forward,
   Reply,
   X,
+  Sparkles,
 } from "lucide-react"
+import { CalendarWrapped } from "./calendar-wrapped"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
 
@@ -71,6 +73,12 @@ export function CalendarView({
   const [year, setYear] = useState(initialYear)
   const [month, setMonth] = useState(initialMonth)
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [wrappedScope, setWrappedScope] = useState<
+    | { type: "year"; year: number }
+    | { type: "month"; year: number; month: number }
+    | { type: "day"; year: number; month: number; day: number }
+    | null
+  >(null)
 
   // Group messages by day
   const dayMap = useMemo(() => {
@@ -246,13 +254,33 @@ export function CalendarView({
             </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Close calendar"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Year Wrapped */}
+            <button
+              onClick={() => setWrappedScope({ type: "year", year })}
+              className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {year} Wrapped
+            </button>
+
+            {/* Month Wrapped */}
+            <button
+              onClick={() => setWrappedScope({ type: "month", year, month })}
+              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {MONTH_NAMES[month].slice(0, 3)} Wrapped
+            </button>
+
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Close calendar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Month summary stats */}
@@ -394,12 +422,26 @@ export function CalendarView({
                   year: "numeric",
                 })}
               </h3>
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setWrappedScope({
+                    type: "day",
+                    year: selectedDayStats.date.getFullYear(),
+                    month: selectedDayStats.date.getMonth(),
+                    day: selectedDayStats.date.getDate(),
+                  })}
+                  className="flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-[10px] font-medium text-primary transition-all hover:bg-primary/20"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Day Wrapped
+                </button>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 md:grid-cols-6 mb-4">
@@ -468,6 +510,15 @@ export function CalendarView({
               )}
             </div>
           </div>
+        )}
+
+        {/* Wrapped overlay */}
+        {wrappedScope && (
+          <CalendarWrapped
+            messages={messages}
+            scope={wrappedScope}
+            onClose={() => setWrappedScope(null)}
+          />
         )}
 
         {/* Quick month navigation */}

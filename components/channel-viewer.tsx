@@ -20,6 +20,7 @@ import { StatsView } from "./stats-view"
 import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
+import { ActivityHeatmap } from "./activity-heatmap"
 
 interface ChannelViewerProps {
   data: TelegramExport
@@ -162,6 +163,12 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGraphClick={() => setGraphOpen(true)}
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
+      />
+      <ActivityHeatmap
+        messages={data.messages}
+        onDayClick={(date) => {
+          setCalendarOpen({ year: date.getFullYear(), month: date.getMonth() })
+        }}
       />
       <FilterToolbar
         searchQuery={searchQuery}

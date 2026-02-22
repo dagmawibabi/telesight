@@ -206,3 +206,131 @@ function createPhantomMessage(id: number): TelegramMessage {
     text_entities: [],
   }
 }
+
+// ─── Forwarded Sources Graph ────────────────────────────────────────────────
+
+export interface ForwardSource {
+  name: string
+  count: number
+  totalReactions: number
+  messages: TelegramMessage[]
+  firstDate: Date
+  lastDate: Date
+}
+
+export interface ForwardGraphData {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  chains: ReplyChain[]
+  sources: ForwardSource[]
+  totalForwarded: number
+  selfReplyCount: number
+  crossChannelReplyCount: number
+}
+
+/**
+ * Build a graph of forwarded sources.
+ * Each unique forwarded_from becomes a hub node, connected to all messages forwarded from it.
+ */
+export function buildForwardGraph(messages: TelegramMessage[]): ForwardGraphData {
+  const forwarded = messages.filter(
+    (m) => m.type === "message" && m.forwarded_from
+  )
+
+  // Group by source
+  const sourceMap = new Map<string, TelegramMessage[]>()
+  for (const msg of forwarded) {
+    const src = msg.forwarded_from!
+    if (!sourceMap.has(src)) sourceMap.set(src, [])
+    sourceMap.get(src)!.push(msg)
+  }
+
+  const sources: ForwardSource[] = []
+  const nodes: GraphNode[] = []
+  const edges: GraphEdge[] = []
+  let chainId = 0
+
+  // Sort sources by count descending
+  const sortedSources = Array.from(sourceMap.entries())
+    .sort((a, b) => b[1].length - a[1].length)
+
+  for (const [sourceName, msgs] of sortedSources) {
+    chainId++
+    const totalReactions = msgs.reduce((s, m) => {
+      return s + (m.reactions?.reduce((rs, r) => rs + r.count, 0) || 0)
+    }, 0)
+
+    const dates = msgs.map((m) => new Date(m.date)).sort((a, b) => a.getTime() - b.getTime())
+
+    sources.push({
+      name: sourceName,
+      count: msgs.length,
+      totalReactions,
+      messages: msgs,
+      firstDate: dates[0],
+      lastDate: dates[dates.length - 1],
+    })
+
+    // Create hub node for the source
+    const hubId = -(chainId * 10000) // negative IDs for source hubs
+    const hubNode: GraphNode = {
+      id: hubId,
+      message: createPhantomMessage(hubId),
+      text: sourceName,
+      date: dates[0],
+      reactionCount: totalReactions,
+      hasMedia: false,
+      isForwardedReply: true,
+      radius: Math.max(10, Math.min(30, 10 + Math.sqrt(msgs.length) * 3)),
+      chainId,
+    }
+    nodes.push(hubNode)
+
+    // Create a node for each forwarded message
+    const chainNodes: GraphNode[] = [hubNode]
+    for (const msg of msgs) {
+      const reactionCount = msg.reactions?.reduce((s, r) => s + r.count, 0) || 0
+      const msgNode: GraphNode = {
+        id: msg.id,
+        message: msg,
+        text: getMessageText(msg).slice(0, 120),
+        date: new Date(msg.date),
+        reactionCount,
+        hasMedia: !!(msg.photo || msg.file || msg.media_type),
+        isForwardedReply: false,
+        radius: Math.max(5, Math.min(16, 5 + Math.sqrt(reactionCount) * 1.2)),
+        chainId,
+      }
+      nodes.push(msgNode)
+      chainNodes.push(msgNode)
+      edges.push({ source: hubId, target: msg.id })
+    }
+  }
+
+  // Build chains (each source = one chain)
+  const chains: ReplyChain[] = sortedSources.map(([, msgs], idx) => {
+    const cId = idx + 1
+    const hubId = -(cId * 10000)
+    const chainNodeList = nodes.filter((n) => n.chainId === cId)
+    const chainEdgeList = edges.filter(
+      (e) => e.source === hubId
+    )
+    return {
+      id: cId,
+      nodes: chainNodeList,
+      edges: chainEdgeList,
+      rootId: hubId,
+      depth: 1,
+    }
+  })
+
+  return {
+    nodes,
+    edges,
+    chains,
+    sources,
+    totalForwarded: forwarded.length,
+    selfReplyCount: 0,
+    crossChannelReplyCount: 0,
+  }
+}

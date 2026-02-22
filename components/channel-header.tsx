@@ -99,7 +99,7 @@ export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClic
                 className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
               >
                 <Share2 className="h-3.5 w-3.5" />
-                Reply Graph
+                Data Graph
               </button>
             )}
             {onGalleryClick && (

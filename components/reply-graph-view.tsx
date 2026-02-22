@@ -20,7 +20,7 @@ import {
   type SimulationLinkDatum,
 } from "d3-force"
 import type { TelegramMessage } from "@/lib/telegram-types"
-import { buildReplyGraph, type GraphNode, type GraphEdge, type ReplyGraphData } from "@/lib/reply-graph"
+import { buildReplyGraph, buildForwardGraph, type GraphNode, type GraphEdge, type ReplyGraphData, type ForwardGraphData } from "@/lib/reply-graph"
 import { format } from "date-fns"
 
 interface ReplyGraphViewProps {
@@ -47,7 +47,10 @@ function getChainColor(chainId: number): string {
   return CHAIN_COLORS[(chainId - 1) % CHAIN_COLORS.length]
 }
 
+export type GraphMode = "replies" | "forwards"
+
 export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphViewProps) {
+  const [mode, setMode] = useState<GraphMode>("replies")
   const [includeCrossChannel, setIncludeCrossChannel] = useState(false)
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
@@ -64,9 +67,18 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
   const edgesRef = useRef<GraphEdge[]>([])
 
   const graphData = useMemo(
-    () => buildReplyGraph(messages, includeCrossChannel),
-    [messages, includeCrossChannel]
+    () => mode === "replies"
+      ? buildReplyGraph(messages, includeCrossChannel)
+      : buildForwardGraph(messages),
+    [messages, includeCrossChannel, mode]
   )
+
+  // Reset selection when mode changes
+  useEffect(() => {
+    setSelectedNode(null)
+    setSelectedChain(null)
+    setHoveredNode(null)
+  }, [mode])
 
   // Escape key
   useEffect(() => {
@@ -399,26 +411,52 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
             <Share2 className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Reply Graph</h2>
+            <h2 className="text-sm font-semibold text-foreground">Data Graph</h2>
             <p className="text-xs text-muted-foreground">
-              {graphData.nodes.length} nodes &middot; {graphData.edges.length} edges &middot; {graphData.chains.length} chains
+              {graphData.nodes.length} nodes &middot; {graphData.edges.length} edges &middot; {graphData.chains.length} {mode === "replies" ? "chains" : "sources"}
             </p>
+          </div>
+
+          {/* Mode toggle */}
+          <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-0.5 ml-2">
+            <button
+              onClick={() => setMode("replies")}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                mode === "replies"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              }`}
+            >
+              Self-Replies
+            </button>
+            <button
+              onClick={() => setMode("forwards")}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                mode === "forwards"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              }`}
+            >
+              Forwards
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Toggle cross-channel */}
-          <button
-            onClick={() => setIncludeCrossChannel((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all border ${
-              includeCrossChannel
-                ? "bg-primary/15 border-primary/30 text-primary"
-                : "bg-secondary/50 border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            Cross-channel
-          </button>
+          {/* Toggle cross-channel (only for replies mode) */}
+          {mode === "replies" && (
+            <button
+              onClick={() => setIncludeCrossChannel((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all border ${
+                includeCrossChannel
+                  ? "bg-primary/15 border-primary/30 text-primary"
+                  : "bg-secondary/50 border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+              Cross-channel
+            </button>
+          )}
 
           <button
             onClick={resetView}
@@ -444,9 +482,11 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <Share2 className="h-12 w-12 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
-                {includeCrossChannel
-                  ? "No reply relationships found"
-                  : "No self-replies found. Try enabling cross-channel replies."}
+                {mode === "forwards"
+                  ? "No forwarded messages found in this export."
+                  : includeCrossChannel
+                    ? "No reply relationships found"
+                    : "No self-replies found. Try enabling cross-channel replies."}
               </p>
             </div>
           ) : (
@@ -513,6 +553,7 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
             <ChainListPanel
               graphData={graphData}
               selectedChain={selectedChain}
+              mode={mode}
               onChainSelect={(id) => setSelectedChain(selectedChain === id ? null : id)}
               onNodeSelect={setSelectedNode}
               onPostClick={(node) => {
@@ -649,22 +690,32 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 function ChainListPanel({
   graphData,
   selectedChain,
+  mode,
   onChainSelect,
   onNodeSelect,
   onPostClick,
 }: {
-  graphData: ReplyGraphData
+  graphData: ReplyGraphData | ForwardGraphData
   selectedChain: number | null
+  mode: GraphMode
   onChainSelect: (id: number) => void
   onNodeSelect: (node: GraphNode) => void
   onPostClick: (node: GraphNode) => void
 }) {
+  const isForwards = mode === "forwards"
+  const forwardData = isForwards ? (graphData as ForwardGraphData) : null
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border">
-        <p className="text-xs font-semibold text-foreground mb-1">Reply Chains</p>
+        <p className="text-xs font-semibold text-foreground mb-1">
+          {isForwards ? "Forward Sources" : "Reply Chains"}
+        </p>
         <p className="text-[10px] text-muted-foreground">
-          {graphData.selfReplyCount} self-replies &middot; {graphData.crossChannelReplyCount} cross-channel
+          {isForwards
+            ? `${forwardData?.totalForwarded || 0} forwarded messages from ${forwardData?.sources.length || 0} sources`
+            : `${graphData.selfReplyCount} self-replies \u00b7 ${graphData.crossChannelReplyCount} cross-channel`
+          }
         </p>
       </div>
 
@@ -672,26 +723,30 @@ function ChainListPanel({
       <div className="grid grid-cols-2 gap-2 px-4 py-3 border-b border-border">
         <div className="rounded-lg bg-secondary/30 px-2.5 py-2 text-center">
           <p className="text-lg font-semibold text-foreground font-mono">{graphData.chains.length}</p>
-          <p className="text-[10px] text-muted-foreground">Chains</p>
+          <p className="text-[10px] text-muted-foreground">{isForwards ? "Sources" : "Chains"}</p>
         </div>
         <div className="rounded-lg bg-secondary/30 px-2.5 py-2 text-center">
           <p className="text-lg font-semibold text-foreground font-mono">
             {graphData.chains.length > 0 ? graphData.chains[0].nodes.length : 0}
           </p>
-          <p className="text-[10px] text-muted-foreground">Longest</p>
+          <p className="text-[10px] text-muted-foreground">{isForwards ? "Top Source" : "Longest"}</p>
         </div>
         <div className="rounded-lg bg-secondary/30 px-2.5 py-2 text-center">
           <p className="text-lg font-semibold text-foreground font-mono">
-            {graphData.chains.length > 0
-              ? Math.max(...graphData.chains.map((c) => c.depth))
-              : 0}
+            {isForwards
+              ? graphData.nodes.filter(n => !n.isForwardedReply).length
+              : graphData.chains.length > 0
+                ? Math.max(...graphData.chains.map((c) => c.depth))
+                : 0}
           </p>
-          <p className="text-[10px] text-muted-foreground">Max Depth</p>
+          <p className="text-[10px] text-muted-foreground">{isForwards ? "Messages" : "Max Depth"}</p>
         </div>
         <div className="rounded-lg bg-secondary/30 px-2.5 py-2 text-center">
           <p className="text-lg font-semibold text-foreground font-mono">
             {graphData.chains.length > 0
-              ? (graphData.nodes.length / graphData.chains.length).toFixed(1)
+              ? isForwards
+                ? (graphData.nodes.filter(n => !n.isForwardedReply).length / graphData.chains.length).toFixed(1)
+                : (graphData.nodes.length / graphData.chains.length).toFixed(1)
               : 0}
           </p>
           <p className="text-[10px] text-muted-foreground">Avg Size</p>
@@ -717,11 +772,15 @@ function ChainListPanel({
               <div className="flex items-center gap-2">
                 <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                 <span className="text-xs font-medium text-foreground">
-                  {chain.nodes.length} messages
+                  {isForwards
+                    ? `${chain.nodes.length - 1} fwd`
+                    : `${chain.nodes.length} messages`}
                 </span>
-                <span className="text-[10px] text-muted-foreground">
-                  depth {chain.depth}
-                </span>
+                {!isForwards && (
+                  <span className="text-[10px] text-muted-foreground">
+                    depth {chain.depth}
+                  </span>
+                )}
                 {totalReactions > 0 && (
                   <span className="text-[10px] text-muted-foreground font-mono ml-auto">
                     {totalReactions.toLocaleString()} reactions
@@ -729,7 +788,9 @@ function ChainListPanel({
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground line-clamp-1 pl-4">
-                {rootNode?.text || "[root message]"}
+                {isForwards
+                  ? rootNode?.text || "[unknown source]"
+                  : rootNode?.text || "[root message]"}
               </p>
 
               {/* Chain nodes preview (only when active) */}
