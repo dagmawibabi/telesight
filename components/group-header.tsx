@@ -14,6 +14,7 @@ import {
   Lightbulb,
   Users,
   Hash,
+  Flame,
 } from "lucide-react"
 import type { GroupStats } from "@/lib/group-analytics"
 
@@ -24,6 +25,7 @@ interface GroupHeaderProps {
   onGalleryClick?: () => void
   onInsightsClick?: () => void
   onMembersClick?: () => void
+  onConflictClick?: () => void
 }
 
 export function GroupHeader({
@@ -33,6 +35,7 @@ export function GroupHeader({
   onGalleryClick,
   onInsightsClick,
   onMembersClick,
+  onConflictClick,
 }: GroupHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
@@ -113,6 +116,15 @@ export function GroupHeader({
               >
                 <Lightbulb className="h-3.5 w-3.5" />
                 Insights
+              </button>
+            )}
+            {onConflictClick && (
+              <button
+                onClick={onConflictClick}
+                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+              >
+                <Flame className="h-3.5 w-3.5" />
+                Conflicts
               </button>
             )}
           </div>

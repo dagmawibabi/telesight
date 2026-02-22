@@ -12,6 +12,7 @@ import {
   groupByMonth,
 } from "@/lib/telegram-types"
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
+import { Flame } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"
@@ -20,6 +21,7 @@ import { StatsView } from "./stats-view"
 import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
+import { ConflictView } from "./conflict-view"
 
 
 interface ChannelViewerProps {
@@ -42,6 +44,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [conflictOpen, setConflictOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -163,6 +166,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGraphClick={() => setGraphOpen(true)}
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
+        onConflictClick={() => setConflictOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -232,6 +236,19 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         <InsightsView
           messages={data.messages}
           onClose={() => setInsightsOpen(false)}
+        />
+      )}
+
+      {/* Conflict detection overlay */}
+      {conflictOpen && (
+        <ConflictView
+          messages={data.messages}
+          onClose={() => setConflictOpen(false)}
+          onPostClick={(msg) => {
+            setConflictOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
         />
       )}
 

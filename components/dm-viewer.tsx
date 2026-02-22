@@ -22,6 +22,7 @@ import {
   Calendar,
   GitBranch,
   MessageCircle,
+  Flame,
 } from "lucide-react"
 import type { TelegramExport, TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText, getDMParticipants, computeStats } from "@/lib/telegram-types"
@@ -34,6 +35,7 @@ import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { CalendarView } from "./calendar-view"
 import { ThreadedView } from "./threaded-view"
+import { ConflictView } from "./conflict-view"
 
 interface DMViewerProps {
   data: TelegramExport
@@ -207,6 +209,7 @@ function DMHeader({
   totalReactions,
   onStatsClick,
   onInsightsClick,
+  onConflictClick,
   onGraphClick,
   onGalleryClick,
   onCalendarClick,
@@ -218,6 +221,7 @@ function DMHeader({
   totalReactions: number
   onStatsClick: () => void
   onInsightsClick: () => void
+  onConflictClick: () => void
   onGraphClick: () => void
   onGalleryClick: () => void
   onCalendarClick: () => void
@@ -270,6 +274,13 @@ function DMHeader({
             >
               <Lightbulb className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Insights</span>
+            </button>
+            <button
+              onClick={onConflictClick}
+              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+            >
+              <Flame className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Conflicts</span>
             </button>
             <button
               onClick={onGraphClick}
@@ -335,6 +346,7 @@ export function DMViewer({
   const [showSearch, setShowSearch] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [conflictOpen, setConflictOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
@@ -342,7 +354,7 @@ export function DMViewer({
   const [viewMode, setViewMode] = useState<"bubble" | "threaded">("bubble")
 
   const participants = useMemo(
-    () => getDMParticipants(data.messages) || [data.name, "You"],
+    () => (getDMParticipants(data.messages) ?? [data.name, "You"]) as [string, string],
     [data]
   )
 
@@ -426,6 +438,7 @@ export function DMViewer({
           totalReactions={stats.totalReactions}
           onStatsClick={() => setStatsOpen(true)}
           onInsightsClick={() => setInsightsOpen(true)}
+          onConflictClick={() => setConflictOpen(true)}
           onGraphClick={() => setGraphOpen(true)}
           onGalleryClick={() => setGalleryOpen(true)}
           onCalendarClick={() => {
@@ -575,6 +588,19 @@ export function DMViewer({
       {/* Insights overlay */}
       {insightsOpen && (
         <InsightsView messages={data.messages} onClose={() => setInsightsOpen(false)} />
+      )}
+
+      {/* Conflict detection overlay */}
+      {conflictOpen && (
+        <ConflictView
+          messages={data.messages}
+          onClose={() => setConflictOpen(false)}
+          onPostClick={(msg) => {
+            setConflictOpen(false)
+            setSelectedPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
       )}
 
       {/* Data graph overlay */}
