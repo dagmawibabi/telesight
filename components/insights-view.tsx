@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useEffect } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { format } from "date-fns"
 import {
   X,
@@ -31,8 +31,9 @@ import {
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
 import { ActivityHeatmap } from "./activity-heatmap"
+import { InsightsWrapped } from "./insights-wrapped"
 import { computeMemberStats, type MemberStat } from "@/lib/group-analytics"
-import { Users, MessageSquare as MsgIcon, Reply as ReplyIcon } from "lucide-react"
+import { Users, MessageSquare as MsgIcon, Reply as ReplyIcon, Sparkles, Download } from "lucide-react"
 
 interface InsightsViewProps {
   messages: TelegramMessage[]
@@ -585,13 +586,18 @@ function MemberBreakdownSection({
 }
 
 export function InsightsView({ messages, onClose }: InsightsViewProps) {
+  const [showWrapped, setShowWrapped] = useState(false)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") {
+        if (showWrapped) setShowWrapped(false)
+        else onClose()
+      }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [onClose])
+  }, [onClose, showWrapped])
 
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -629,6 +635,14 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
 
   return (
     <div className="fixed inset-0 z-[60] bg-background overflow-y-auto">
+      {/* Wrapped overlay */}
+      {showWrapped && (
+        <InsightsWrapped
+          messages={messages}
+          onClose={() => setShowWrapped(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
@@ -643,13 +657,22 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Close insights"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowWrapped(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Export Wrapped
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label="Close insights"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
