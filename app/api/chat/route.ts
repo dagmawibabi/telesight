@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf"
+const HF_API_URL = "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-2-7b-chat-hf"
 
 export async function POST(req: NextRequest) {
   try {
