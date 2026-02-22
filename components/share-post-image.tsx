@@ -133,6 +133,7 @@ export function SharePostImage({ message, allMessages, channelName, mediaFileMap
   const [showHashtags, setShowHashtags] = useState(true)
   const [showEditedDate, setShowEditedDate] = useState(true)
   const [showMedia, setShowMedia] = useState(true)
+  const [stripHashtagsFromText, setStripHashtagsFromText] = useState(true)
 
   // Profile picture
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null)
@@ -140,11 +141,22 @@ export function SharePostImage({ message, allMessages, channelName, mediaFileMap
   const [copied, setCopied] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
-  const text = getMessageText(message)
+  const rawText = getMessageText(message)
   const totalReactions = message.reactions?.reduce((s, r) => s + r.count, 0) || 0
   const links = extractLinks(message)
   const hashtags = extractHashtags(message)
   const hasMedia = !!(message.photo || message.file || message.media_type)
+
+  // Strip hashtags from body text when shown as separate section
+  const text = (showHashtags && stripHashtagsFromText && hashtags.length > 0)
+    ? (() => {
+      let cleaned = rawText
+      for (const tag of hashtags) {
+        cleaned = cleaned.replaceAll(tag, "")
+      }
+      return cleaned.replace(/\n{3,}/g, "\n\n").trim()
+    })()
+    : rawText
   const postScore = allMessages ? computePostScore(message, allMessages) : null
 
   // Resolve theme
@@ -422,6 +434,7 @@ export function SharePostImage({ message, allMessages, channelName, mediaFileMap
                 { label: "Forwarded from", icon: <Forward className="h-3 w-3" />, value: showForwardedFrom, set: setShowForwardedFrom, disabled: !message.forwarded_from },
                 { label: "Engagement score", icon: <Gauge className="h-3 w-3" />, value: showScore, set: setShowScore, disabled: !postScore },
                 { label: "Hashtags", icon: <HashIcon className="h-3 w-3" />, value: showHashtags, set: setShowHashtags, disabled: hashtags.length === 0 },
+                { label: "Strip tags from text", icon: <HashIcon className="h-3 w-3" />, value: stripHashtagsFromText, set: setStripHashtagsFromText, disabled: !showHashtags || hashtags.length === 0 },
               ] as const).map((item) => (
                 <button
                   key={item.label}
@@ -536,8 +549,8 @@ export function SharePostImage({ message, allMessages, channelName, mediaFileMap
               </div>
             )}
 
-            {/* Media indicator */}
-            {showMediaIndicator && hasMedia && (
+            {/* Media indicator -- hide if actual image is rendered */}
+            {showMediaIndicator && hasMedia && !(showMedia && mediaBase64) && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 6,
                 marginBottom: 14,
