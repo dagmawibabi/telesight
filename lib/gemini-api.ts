@@ -1,5 +1,5 @@
 // Google Gemini API - works directly in browser (no CORS issues)
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent"
 
 export interface HFMessage {
   role: "system" | "user" | "assistant"
