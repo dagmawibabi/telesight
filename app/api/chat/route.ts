@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const HF_API_URL = "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-2-7b-chat-hf"
+const HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Format messages for Llama 2
-    const prompt = formatLlama2Chat(messages)
+    // Format messages for Mistral
+    const prompt = formatMistralChat(messages)
 
     const response = await fetch(HF_API_URL, {
       method: "POST",
@@ -70,29 +70,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function formatLlama2Chat(messages: { role: string; content: string }[]): string {
+// Format messages for Mistral Instruct
+function formatMistralChat(messages: { role: string; content: string }[]): string {
   const systemMessage = messages.find(m => m.role === "system")
   const chatMessages = messages.filter(m => m.role !== "system")
   
-  let prompt = "<s>"
+  let prompt = ""
   
   if (systemMessage) {
-    prompt += `[INST] <<SYS>>\n${systemMessage.content}\n<</SYS>>\n\n`
+    prompt += `<s>[INST] ${systemMessage.content}\n\n`
   } else {
-    prompt += `[INST] `
+    prompt += `<s>[INST] `
   }
   
   for (let i = 0; i < chatMessages.length; i++) {
     const msg = chatMessages[i]
     
     if (msg.role === "user") {
-      if (i > 0) {
-        prompt += `<s>[INST] ${msg.content} [/INST]`
-      } else {
-        prompt += `${msg.content} [/INST]`
-      }
+      prompt += `${msg.content} [/INST]`
     } else if (msg.role === "assistant") {
       prompt += ` ${msg.content} </s>`
+      if (i < chatMessages.length - 1) {
+        prompt += `<s>[INST] `
+      }
     }
   }
   
