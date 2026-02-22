@@ -750,6 +750,7 @@ export function PostDetailView({
       {showShare && (
         <SharePostImage
           message={message}
+          allMessages={allMessages}
           channelName={channelName}
           onClose={() => setShowShare(false)}
         />
