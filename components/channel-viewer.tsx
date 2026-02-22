@@ -18,6 +18,8 @@ import { CalendarView } from "./calendar-view"
 import { PostDetailView } from "./post-detail-view"
 import { StatsView } from "./stats-view"
 import { ReplyGraphView } from "./reply-graph-view"
+import { MediaGallery } from "./media-gallery"
+import { InsightsView } from "./insights-view"
 
 interface ChannelViewerProps {
   data: TelegramExport
@@ -37,6 +39,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [selectedPost, setSelectedPost] = useState<TelegramMessage | null>(null)
   const [statsOpen, setStatsOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [insightsOpen, setInsightsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -152,7 +156,13 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
 
   return (
     <div className="min-h-screen bg-background">
-      <ChannelHeader stats={stats} onStatsClick={() => setStatsOpen(true)} onGraphClick={() => setGraphOpen(true)} />
+      <ChannelHeader
+        stats={stats}
+        onStatsClick={() => setStatsOpen(true)}
+        onGraphClick={() => setGraphOpen(true)}
+        onGalleryClick={() => setGalleryOpen(true)}
+        onInsightsClick={() => setInsightsOpen(true)}
+      />
       <FilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -187,6 +197,10 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         <StatsView
           messages={data.messages}
           onClose={() => setStatsOpen(false)}
+          onPostClick={(msg) => {
+            setStatsOpen(false)
+            openPost(msg)
+          }}
         />
       )}
 
@@ -199,10 +213,33 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         />
       )}
 
+      {/* Media gallery overlay */}
+      {galleryOpen && (
+        <MediaGallery
+          messages={data.messages}
+          mediaFileMap={mediaFileMap}
+          onClose={() => setGalleryOpen(false)}
+          onPostClick={(msg) => {
+            setGalleryOpen(false)
+            openPost(msg)
+          }}
+        />
+      )}
+
+      {/* Insights overlay */}
+      {insightsOpen && (
+        <InsightsView
+          messages={data.messages}
+          onClose={() => setInsightsOpen(false)}
+        />
+      )}
+
       {/* Post detail overlay */}
       {selectedPost && (
         <PostDetailView
           message={selectedPost}
+          allMessages={data.messages}
+          channelName={data.name}
           replyToMessage={
             selectedPost.reply_to_message_id
               ? messageMap.get(selectedPost.reply_to_message_id)
@@ -217,6 +254,9 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           onReplyNavigate={(id) => {
             setSelectedPost(null)
             handleReplyNavigate(id)
+          }}
+          onPostClick={(msg) => {
+            setSelectedPost(msg)
           }}
         />
       )}

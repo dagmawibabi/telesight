@@ -10,6 +10,8 @@ import {
   Heart,
   BarChart3,
   Share2,
+  Images,
+  Lightbulb,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
@@ -17,9 +19,11 @@ interface ChannelHeaderProps {
   stats: ChannelStats
   onStatsClick?: () => void
   onGraphClick?: () => void
+  onGalleryClick?: () => void
+  onInsightsClick?: () => void
 }
 
-export function ChannelHeader({ stats, onStatsClick, onGraphClick }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -96,6 +100,24 @@ export function ChannelHeader({ stats, onStatsClick, onGraphClick }: ChannelHead
               >
                 <Share2 className="h-3.5 w-3.5" />
                 Reply Graph
+              </button>
+            )}
+            {onGalleryClick && (
+              <button
+                onClick={onGalleryClick}
+                className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+              >
+                <Images className="h-3.5 w-3.5" />
+                Gallery
+              </button>
+            )}
+            {onInsightsClick && (
+              <button
+                onClick={onInsightsClick}
+                className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+              >
+                <Lightbulb className="h-3.5 w-3.5" />
+                Insights
               </button>
             )}
           </div>

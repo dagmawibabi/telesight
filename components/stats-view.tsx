@@ -32,16 +32,20 @@ import {
   Area,
 } from "recharts"
 import type { TelegramMessage } from "@/lib/telegram-types"
+import { getMessageText } from "@/lib/telegram-types"
 import {
   computeAnalytics,
   computeHashtagAnalytics,
   type OverviewInsights,
   type HashtagStat,
 } from "@/lib/analytics"
+import { getTopPosts, type TopPost } from "@/lib/post-scoring"
+import { Download, Trophy, Award } from "lucide-react"
 
 interface StatsViewProps {
   messages: TelegramMessage[]
   onClose: () => void
+  onPostClick?: (message: TelegramMessage) => void
 }
 
 // ─── Stat card ──────────────────────────────────────────────────────────────
@@ -126,8 +130,8 @@ function CustomTooltip({
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export function StatsView({ messages, onClose }: StatsViewProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "hashtags">("overview")
+export function StatsView({ messages, onClose, onPostClick }: StatsViewProps) {
+  const [activeTab, setActiveTab] = useState<"overview" | "hashtags" | "top-posts">("overview")
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined)
 
@@ -153,6 +157,11 @@ export function StatsView({ messages, onClose }: StatsViewProps) {
 
   const hashtagStats = useMemo(
     () => computeHashtagAnalytics(messages),
+    [messages]
+  )
+
+  const topPosts = useMemo(
+    () => getTopPosts(messages, 30),
     [messages]
   )
 
@@ -216,6 +225,30 @@ export function StatsView({ messages, onClose }: StatsViewProps) {
                 {hashtagStats.length}
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab("top-posts")}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === "top-posts"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Top Posts
+              <span className="ml-1.5 text-[10px] text-muted-foreground font-mono">
+                {topPosts.length}
+              </span>
+            </button>
+
+            {/* CSV Export */}
+            <div className="ml-auto">
+              <button
+                onClick={() => exportCsv(messages)}
+                className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export CSV
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -230,6 +263,8 @@ export function StatsView({ messages, onClose }: StatsViewProps) {
             onMonthChange={setSelectedMonth}
             months={MONTHS}
           />
+        ) : activeTab === "top-posts" ? (
+          <TopPostsTab topPosts={topPosts} onPostClick={onPostClick} />
         ) : (
           <HashtagTab stats={hashtagStats} />
         )}
@@ -837,6 +872,209 @@ function HashtagTab({ stats }: { stats: HashtagStat[] }) {
                   </span>
                 </div>
               </div>
+            )
+          })}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// ─── CSV Export ─────────────────────────────────────────────────────────────
+
+function exportCsv(messages: TelegramMessage[]) {
+  const posts = messages.filter((m) => m.type === "message")
+  const headers = [
+    "ID", "Date", "Time", "From", "Text", "Reactions Total",
+    "Reactions Detail", "Has Media", "Media Type", "Is Forwarded",
+    "Forwarded From", "Reply To", "Links", "Hashtags",
+  ]
+
+  const rows = posts.map((msg) => {
+    const text = getMessageText(msg)
+    const d = new Date(msg.date)
+    const totalReactions = msg.reactions?.reduce((s, r) => s + r.count, 0) || 0
+    const reactionsDetail = msg.reactions
+      ? msg.reactions.map((r) => `${r.emoji}:${r.count}`).join("; ")
+      : ""
+    const hasMedia = msg.photo || msg.file || msg.media_type ? "Yes" : "No"
+    const links: string[] = []
+    const hashtags: string[] = []
+    if (Array.isArray(msg.text)) {
+      for (const part of msg.text) {
+        if (typeof part !== "string") {
+          if (part.type === "link") links.push(part.text)
+          if (part.type === "text_link" && part.href) links.push(part.href)
+          if (part.type === "hashtag") hashtags.push(part.text)
+        }
+      }
+    }
+
+    return [
+      msg.id,
+      format(d, "yyyy-MM-dd"),
+      format(d, "HH:mm:ss"),
+      msg.from || msg.actor || "",
+      `"${text.replace(/"/g, '""').replace(/\n/g, " ")}"`,
+      totalReactions,
+      `"${reactionsDetail}"`,
+      hasMedia,
+      msg.media_type || "",
+      msg.forwarded_from ? "Yes" : "No",
+      msg.forwarded_from || "",
+      msg.reply_to_message_id || "",
+      `"${links.join("; ")}"`,
+      `"${hashtags.join("; ")}"`,
+    ]
+  })
+
+  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `telegram-export-${format(new Date(), "yyyy-MM-dd")}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ─── Top Posts Tab ──────────────────────────────────────────────────────────
+
+function TopPostsTab({
+  topPosts,
+  onPostClick,
+}: {
+  topPosts: TopPost[]
+  onPostClick?: (message: TelegramMessage) => void
+}) {
+  if (topPosts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
+        <Trophy className="h-10 w-10 text-muted-foreground/30" />
+        <p className="text-sm">No posts with reactions found</p>
+      </div>
+    )
+  }
+
+  const maxReactions = topPosts[0]?.totalReactions || 1
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Podium top 3 */}
+      {topPosts.length >= 3 && (
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
+            <Trophy className="h-3.5 w-3.5" />
+            Most Engaging Posts
+          </h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {topPosts.slice(0, 3).map((tp, i) => {
+              const text = getMessageText(tp.message)
+              const medalColors = [
+                "border-yellow-500/40 bg-yellow-500/5",
+                "border-gray-400/40 bg-gray-400/5",
+                "border-amber-700/40 bg-amber-700/5",
+              ]
+              const medalLabels = ["1st", "2nd", "3rd"]
+              return (
+                <button
+                  key={tp.message.id}
+                  onClick={() => onPostClick?.(tp.message)}
+                  className={`flex flex-col gap-2 rounded-xl border p-4 text-left transition-all hover:scale-[1.02] cursor-pointer ${medalColors[i]}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold text-foreground">{medalLabels[i]}</span>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      #{tp.message.id}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/80 line-clamp-3">
+                    {text.slice(0, 200) || (tp.message.photo ? "[Photo]" : "[Media]")}
+                  </p>
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className="text-lg font-bold font-mono text-foreground">
+                      {tp.totalReactions.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">reactions</span>
+                    {tp.message.reactions && (
+                      <div className="flex gap-1 ml-auto">
+                        {tp.message.reactions.slice(0, 3).map((r, ri) => (
+                          <span key={ri} className="text-sm">{r.emoji}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(tp.message.date), "MMM d, yyyy")}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Full list */}
+      <section>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+          All Top Posts
+        </h2>
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2.5 border-b border-border bg-secondary/30 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+            <div className="col-span-1">#</div>
+            <div className="col-span-5">Post</div>
+            <div className="col-span-2 text-right">Reactions</div>
+            <div className="col-span-2 text-center">Top</div>
+            <div className="col-span-2 text-right">Date</div>
+          </div>
+
+          {topPosts.map((tp, i) => {
+            const text = getMessageText(tp.message)
+            return (
+              <button
+                key={tp.message.id}
+                onClick={() => onPostClick?.(tp.message)}
+                className="grid grid-cols-12 gap-2 items-center px-4 py-3 border-b border-border/40 last:border-b-0 hover:bg-secondary/20 transition-colors w-full text-left cursor-pointer"
+              >
+                <div className="col-span-1">
+                  <span className="text-xs font-mono text-muted-foreground/50">
+                    {i + 1}
+                  </span>
+                </div>
+                <div className="col-span-5 min-w-0">
+                  <p className="text-sm text-foreground truncate">
+                    {text.slice(0, 100) || (tp.message.photo ? "[Photo]" : "[Media]")}
+                  </p>
+                  <div className="mt-1 h-1 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/60 transition-all"
+                      style={{ width: `${(tp.totalReactions / maxReactions) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="col-span-2 text-right">
+                  <span className="text-sm font-mono font-medium text-foreground">
+                    {tp.totalReactions.toLocaleString()}
+                  </span>
+                </div>
+                <div className="col-span-2 text-center">
+                  {tp.message.reactions && (
+                    <div className="flex gap-0.5 justify-center">
+                      {tp.message.reactions.slice(0, 3).map((r, ri) => (
+                        <span key={ri} className="text-xs">{r.emoji}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="col-span-2 text-right">
+                  <span className="text-[11px] text-muted-foreground">
+                    {format(new Date(tp.message.date), "MMM d, yy")}
+                  </span>
+                </div>
+              </button>
             )
           })}
         </div>

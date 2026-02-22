@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import {
   X,
@@ -19,18 +19,27 @@ import {
   Braces,
   Pencil,
   ArrowRight,
+  Gauge,
+  Sparkles,
 } from "lucide-react"
 import type { TelegramMessage, MessageText } from "@/lib/telegram-types"
+import { getMessageText } from "@/lib/telegram-types"
 import { useMediaUrl, type MediaFileMap } from "@/hooks/use-media-url"
 import { LinkPreview } from "./link-preview"
+import { computePostScore, findSimilarPosts, type PostScore, type SimilarPost } from "@/lib/post-scoring"
+import { SharePostImage } from "./share-post-image"
+import { Share } from "lucide-react"
 
 interface PostDetailViewProps {
   message: TelegramMessage
+  allMessages?: TelegramMessage[]
+  channelName?: string
   replyToMessage?: TelegramMessage
   mediaFileMap?: MediaFileMap | null
   onClose: () => void
   onHashtagClick?: (hashtag: string) => void
   onReplyNavigate?: (id: number) => void
+  onPostClick?: (message: TelegramMessage) => void
 }
 
 function renderDetailTextParts(
@@ -255,13 +264,27 @@ function MediaRenderer({ message, mediaFileMap }: { message: TelegramMessage; me
 
 export function PostDetailView({
   message,
+  allMessages,
+  channelName,
   replyToMessage,
   mediaFileMap,
   onClose,
   onHashtagClick,
   onReplyNavigate,
+  onPostClick,
 }: PostDetailViewProps) {
   const [showRawJson, setShowRawJson] = useState(false)
+  const [showShare, setShowShare] = useState(false)
+
+  const postScore = useMemo(
+    () => allMessages ? computePostScore(message, allMessages) : null,
+    [message, allMessages]
+  )
+
+  const similarPosts = useMemo(
+    () => allMessages ? findSimilarPosts(message, allMessages, 6) : [],
+    [message, allMessages]
+  )
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -312,14 +335,24 @@ export function PostDetailView({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-background/95 backdrop-blur-md">
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="fixed top-4 right-4 z-[70] flex h-10 w-10 items-center justify-center rounded-full bg-card border border-border text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
-        aria-label="Close post detail"
-      >
-        <X className="h-5 w-5" />
-      </button>
+      {/* Action buttons */}
+      <div className="fixed top-4 right-4 z-[70] flex items-center gap-2">
+        <button
+          onClick={() => setShowShare(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card border border-border text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+          aria-label="Share as image"
+          title="Share as image"
+        >
+          <Share className="h-4.5 w-4.5" />
+        </button>
+        <button
+          onClick={onClose}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card border border-border text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+          aria-label="Close post detail"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
       <div className="w-full max-w-2xl px-4 py-12">
         {/* Post ID badge */}
@@ -330,6 +363,68 @@ export function PostDetailView({
             {message.type === "service" ? "Service Event" : "Post"}
           </span>
         </div>
+
+        {/* Post Score */}
+        {postScore && (
+          <div className="mb-8 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Gauge className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Engagement Score</h3>
+            </div>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative h-20 w-20 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="oklch(0.25 0.005 260)"
+                    strokeWidth="3"
+                  />
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="oklch(0.7 0.15 180)"
+                    strokeWidth="3"
+                    strokeDasharray={`${postScore.total}, 100`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xl font-bold font-mono text-foreground">{postScore.total}</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold text-foreground">{postScore.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  Top {100 - postScore.percentile}% of all posts
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Reactions", value: postScore.breakdown.reactions, max: 50 },
+                { label: "Text", value: postScore.breakdown.textLength, max: 20 },
+                { label: "Media", value: postScore.breakdown.media, max: 10 },
+                { label: "Links", value: postScore.breakdown.links, max: 8 },
+                { label: "Reply", value: postScore.breakdown.replies, max: 7 },
+                { label: "Forward", value: postScore.breakdown.forwarded, max: 5 },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                    <span className="text-[10px] font-mono text-foreground">{item.value}/{item.max}</span>
+                  </div>
+                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/70 transition-all"
+                      style={{ width: `${(item.value / item.max) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Reply indicator */}
         {message.reply_to_message_id && (
@@ -437,6 +532,63 @@ export function PostDetailView({
                   {tag}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Similar Posts */}
+        {similarPosts.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5" />
+              Similar Posts ({similarPosts.length})
+            </h3>
+            <div className="flex flex-col gap-2">
+              {similarPosts.map((sp) => {
+                const spText = getMessageText(sp.message)
+                const spReactions = sp.message.reactions?.reduce((s, r) => s + r.count, 0) || 0
+                return (
+                  <button
+                    key={sp.message.id}
+                    onClick={() => {
+                      onPostClick?.(sp.message)
+                    }}
+                    className="flex flex-col gap-1.5 rounded-xl bg-card border border-border p-3.5 text-left transition-all hover:border-primary/30 cursor-pointer w-full"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] text-muted-foreground/50">
+                        #{sp.message.id}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {spReactions > 0 && (
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {spReactions.toLocaleString()} reactions
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-primary/70">
+                          {sp.score}% match
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground/80 line-clamp-2">
+                      {spText.slice(0, 150) || (sp.message.photo ? "[Photo]" : "[Media]")}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {sp.reasons.map((r, i) => (
+                        <span
+                          key={i}
+                          className="rounded-md bg-secondary/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(sp.message.date), "MMM d, yyyy 'at' HH:mm")}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -593,8 +745,15 @@ export function PostDetailView({
           )}
         </div>
       </div>
+
+      {/* Share as image overlay */}
+      {showShare && (
+        <SharePostImage
+          message={message}
+          channelName={channelName}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   )
 }
-
-
