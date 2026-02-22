@@ -13,6 +13,7 @@ import {
   type Topic,
 } from "@/lib/group-analytics"
 import { ArrowLeft, FolderOpen, Check, List, Calendar } from "lucide-react"
+import { Flame } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { CalendarView } from "./calendar-view"
 import { PostDetailView } from "./post-detail-view"
@@ -23,6 +24,7 @@ import { InsightsView } from "./insights-view"
 import { MemberAnalyticsView } from "./member-analytics-view"
 import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
+import { ConflictView } from "./conflict-view"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -45,6 +47,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [conflictOpen, setConflictOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -148,6 +151,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onMembersClick={() => setMembersOpen(true)}
+        onConflictClick={() => setConflictOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -295,6 +299,19 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
           messages={data.messages}
           onClose={() => setMembersOpen(false)}
           onPostClick={(msg) => { setMembersOpen(false); openPost(msg) }}
+        />
+      )}
+
+      {/* Conflict detection overlay */}
+      {conflictOpen && (
+        <ConflictView
+          messages={data.messages}
+          onClose={() => setConflictOpen(false)}
+          onPostClick={(msg) => {
+            setConflictOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
         />
       )}
 

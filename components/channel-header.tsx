@@ -12,6 +12,7 @@ import {
   Share2,
   Images,
   Lightbulb,
+  Flame,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
@@ -21,9 +22,10 @@ interface ChannelHeaderProps {
   onGraphClick?: () => void
   onGalleryClick?: () => void
   onInsightsClick?: () => void
+  onConflictClick?: () => void
 }
 
-export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick, onConflictClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -118,6 +120,15 @@ export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClic
               >
                 <Lightbulb className="h-3.5 w-3.5" />
                 Insights
+              </button>
+            )}
+            {onConflictClick && (
+              <button
+                onClick={onConflictClick}
+                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+              >
+                <Flame className="h-3.5 w-3.5" />
+                Conflicts
               </button>
             )}
           </div>
