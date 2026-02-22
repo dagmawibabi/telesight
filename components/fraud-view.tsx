@@ -332,21 +332,21 @@ export function FraudView({
           <StatCard
             icon={Link}
             label="Phishing"
-            value={stats.byType.phishing}
+            value={stats.phishing}
             sub="Fake login / malicious links"
             color="text-blue-500"
           />
           <StatCard
             icon={DollarSign}
             label="Money Scams"
-            value={stats.byType.money_request}
+            value={stats.moneyScams}
             sub="Urgent money requests"
             color="text-green-500"
           />
           <StatCard
             icon={UserX}
             label="Impersonation"
-            value={stats.byType.impersonation}
+            value={stats.impersonation}
             sub="Fake admin/support"
             color="text-purple-500"
           />
