@@ -3,14 +3,14 @@
 import { format } from "date-fns"
 import { Forward, Reply, ExternalLink, Eye } from "lucide-react"
 import type { TelegramMessage, MessageText } from "@/lib/telegram-types"
-import { useMediaUrl } from "@/hooks/use-media-url"
+import { useMediaUrl, type MediaFileMap } from "@/hooks/use-media-url"
 
 interface MessageCardProps {
   message: TelegramMessage
   replyToMessage?: TelegramMessage
   onReplyClick?: (id: number) => void
   onHashtagClick?: (hashtag: string) => void
-  mediaRoot?: FileSystemDirectoryHandle | null
+  mediaFileMap?: MediaFileMap | null
 }
 
 function renderTextParts(
@@ -143,7 +143,7 @@ export function MessageCard({
   replyToMessage,
   onReplyClick,
   onHashtagClick,
-  mediaRoot,
+  mediaFileMap,
 }: MessageCardProps) {
   const text = getPlainText(message)
   const hasMedia = !!(message.photo || message.media_type || message.file)
@@ -153,9 +153,9 @@ export function MessageCard({
   const photoPath = message.photo
   const filePath = message.file
   const thumbnailPath = message.thumbnail
-  const photoUrl = useMediaUrl(mediaRoot ?? null, photoPath)
-  const fileUrl = useMediaUrl(mediaRoot ?? null, filePath)
-  const thumbnailUrl = useMediaUrl(mediaRoot ?? null, thumbnailPath)
+  const photoUrl = useMediaUrl(mediaFileMap ?? null, photoPath)
+  const fileUrl = useMediaUrl(mediaFileMap ?? null, filePath)
+  const thumbnailUrl = useMediaUrl(mediaFileMap ?? null, thumbnailPath)
 
   const isVideo = message.media_type === "video_file" || message.mime_type?.startsWith("video/")
   const isAnimation = message.media_type === "animation"

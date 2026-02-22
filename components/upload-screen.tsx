@@ -1,16 +1,18 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import { Upload, FolderOpen, Check } from "lucide-react"
 import type { TelegramExport } from "@/lib/telegram-types"
+import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 
 interface UploadScreenProps {
   onDataLoaded: (data: TelegramExport) => void
-  onMediaRootSelected: (handle: FileSystemDirectoryHandle) => void
-  mediaRoot: FileSystemDirectoryHandle | null
+  onMediaFolderLoaded: (map: MediaFileMap, folderName: string) => void
+  folderName: string | null
 }
 
-export function UploadScreen({ onDataLoaded, onMediaRootSelected, mediaRoot }: UploadScreenProps) {
+export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: UploadScreenProps) {
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const handleFile = useCallback(
     (file: File) => {
       const reader = new FileReader()
@@ -96,21 +98,33 @@ export function UploadScreen({ onDataLoaded, onMediaRootSelected, mediaRoot }: U
         <div className="flex flex-col items-center gap-3 w-full">
           <div className="h-px w-full max-w-[200px] bg-border/50" />
           <p className="text-xs text-muted-foreground/60">Optional: set export folder to view media</p>
-          <button
-            onClick={async () => {
-              try {
-                const handle = await window.showDirectoryPicker({ mode: "read" })
-                onMediaRootSelected(handle)
-              } catch {
-                // User cancelled
+          <input
+            ref={folderInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory is a non-standard attribute
+            webkitdirectory=""
+            directory=""
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files
+              if (files && files.length > 0) {
+                const map = buildMediaFileMap(files)
+                // Extract folder name from first file's path
+                const firstPath = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || ""
+                const rootName = firstPath.split("/")[0] || "folder"
+                onMediaFolderLoaded(map, rootName)
               }
             }}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-card/30 px-4 py-2.5 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground"
+          />
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-card/30 px-4 py-2.5 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground cursor-pointer"
           >
-            {mediaRoot ? (
+            {folderName ? (
               <>
                 <Check className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">{mediaRoot.name}</span>
+                <span className="font-medium text-foreground">{folderName}</span>
                 <span className="text-xs text-muted-foreground/60">selected</span>
               </>
             ) : (

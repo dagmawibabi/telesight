@@ -5,17 +5,18 @@ import { MessageCard } from "./message-card"
 import { ServiceCard } from "./service-card"
 import type { TelegramMessage, MonthGroup } from "@/lib/telegram-types"
 import { useIsMobile } from "@/hooks/use-mobile"
+import type { MediaFileMap } from "@/hooks/use-media-url"
 
 interface MasonryGridProps {
   monthGroups: MonthGroup[]
   messageMap: Map<number, TelegramMessage>
   onHashtagClick?: (hashtag: string) => void
-  mediaRoot?: FileSystemDirectoryHandle | null
+  mediaFileMap?: MediaFileMap | null
 }
 
 const BATCH_SIZE = 40
 
-export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaRoot }: MasonryGridProps) {
+export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFileMap }: MasonryGridProps) {
   const isMobile = useIsMobile()
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -166,7 +167,7 @@ export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaRoot
                     }
                     onReplyClick={handleReplyClick}
                     onHashtagClick={onHashtagClick}
-                    mediaRoot={mediaRoot}
+                    mediaFileMap={mediaFileMap}
                   />
                 </div>
               )

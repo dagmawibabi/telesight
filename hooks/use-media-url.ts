@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from "react"
 
-const urlCache = new Map<string, string>()
+/**
+ * A map of relativePath -> objectURL built from user-selected folder files.
+ * This is populated once when the user picks a folder via <input webkitdirectory>.
+ */
+export type MediaFileMap = Map<string, string>
 
 export function useMediaUrl(
-  mediaRoot: FileSystemDirectoryHandle | null,
+  fileMap: MediaFileMap | null,
   relativePath: string | undefined | null
 ): string | null {
   const [url, setUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!mediaRoot || !relativePath) {
+    if (!fileMap || !relativePath) {
       setUrl(null)
       return
     }
@@ -22,47 +26,42 @@ export function useMediaUrl(
       return
     }
 
-    const cacheKey = `${mediaRoot.name}:${relativePath}`
-    if (urlCache.has(cacheKey)) {
-      setUrl(urlCache.get(cacheKey)!)
+    // Normalize path separators and try to find the file
+    const normalized = relativePath.replace(/\\/g, "/")
+
+    // Try exact match first
+    if (fileMap.has(normalized)) {
+      setUrl(fileMap.get(normalized)!)
       return
     }
 
-    let cancelled = false
-
-    async function resolve() {
-      try {
-        // Path is like "photos/photo_123@30-04-2024_11-49-39.jpg"
-        const parts = relativePath!.split("/")
-        let current: FileSystemDirectoryHandle = mediaRoot!
-
-        // Navigate to subdirectories
-        for (let i = 0; i < parts.length - 1; i++) {
-          current = await current.getDirectoryHandle(parts[i])
-        }
-
-        // Get the file
-        const fileHandle = await current.getFileHandle(parts[parts.length - 1])
-        const file = await fileHandle.getFile()
-        const objectUrl = URL.createObjectURL(file)
-
-        if (!cancelled) {
-          urlCache.set(cacheKey, objectUrl)
-          setUrl(objectUrl)
-        }
-      } catch {
-        if (!cancelled) {
-          setUrl(null)
-        }
+    // Try without leading directory (e.g. "photos/photo.jpg" stored as just the webkitRelativePath)
+    // The webkitRelativePath includes the root folder name, e.g. "ChatExport/photos/photo.jpg"
+    // We need to match the suffix
+    for (const [key, value] of fileMap) {
+      if (key.endsWith(`/${normalized}`) || key === normalized) {
+        setUrl(value)
+        return
       }
     }
 
-    resolve()
-
-    return () => {
-      cancelled = true
-    }
-  }, [mediaRoot, relativePath])
+    setUrl(null)
+  }, [fileMap, relativePath])
 
   return url
+}
+
+/**
+ * Build a MediaFileMap from a FileList obtained via <input webkitdirectory>.
+ * Indexes all files by their webkitRelativePath, creating object URLs.
+ */
+export function buildMediaFileMap(files: FileList): MediaFileMap {
+  const map: MediaFileMap = new Map()
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const path = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
+    const objectUrl = URL.createObjectURL(file)
+    map.set(path, objectUrl)
+  }
+  return map
 }

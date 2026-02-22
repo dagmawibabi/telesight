@@ -12,15 +12,19 @@ import {
   groupByMonth,
 } from "@/lib/telegram-types"
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
+import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
+import { useRef } from "react"
 
 interface ChannelViewerProps {
   data: TelegramExport
   onReset: () => void
-  mediaRoot: FileSystemDirectoryHandle | null
-  onMediaRootSelected: (handle: FileSystemDirectoryHandle) => void
+  mediaFileMap: MediaFileMap | null
+  folderName: string | null
+  onMediaFolderLoaded: (map: MediaFileMap, folderName: string) => void
 }
 
-export function ChannelViewer({ data, onReset, mediaRoot, onMediaRootSelected }: ChannelViewerProps) {
+export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMediaFolderLoaded }: ChannelViewerProps) {
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
@@ -138,27 +142,40 @@ export function ChannelViewer({ data, onReset, mediaRoot, onMediaRootSelected }:
         monthGroups={monthGroups}
         messageMap={messageMap}
         onHashtagClick={handleHashtagClick}
-        mediaRoot={mediaRoot}
+        mediaFileMap={mediaFileMap}
+      />
+
+      {/* Hidden folder input */}
+      <input
+        ref={folderInputRef}
+        type="file"
+        // @ts-expect-error webkitdirectory is a non-standard attribute
+        webkitdirectory=""
+        directory=""
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files
+          if (files && files.length > 0) {
+            const map = buildMediaFileMap(files)
+            const firstPath = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || ""
+            const rootName = firstPath.split("/")[0] || "folder"
+            onMediaFolderLoaded(map, rootName)
+          }
+        }}
       />
 
       {/* Floating action buttons */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
         <button
-          onClick={async () => {
-            try {
-              const handle = await window.showDirectoryPicker({ mode: "read" })
-              onMediaRootSelected(handle)
-            } catch {
-              // User cancelled
-            }
-          }}
-          className="flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 text-xs font-medium text-muted-foreground shadow-lg transition-all hover:text-foreground hover:border-primary/30"
+          onClick={() => folderInputRef.current?.click()}
+          className="flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 text-xs font-medium text-muted-foreground shadow-lg transition-all hover:text-foreground hover:border-primary/30 cursor-pointer"
           aria-label="Set export folder for media"
         >
-          {mediaRoot ? (
+          {folderName ? (
             <>
               <Check className="h-3.5 w-3.5 text-primary" />
-              <span className="max-w-[120px] truncate">{mediaRoot.name}</span>
+              <span className="max-w-[120px] truncate">{folderName}</span>
             </>
           ) : (
             <>
