@@ -25,6 +25,7 @@ interface ThreadedViewProps {
   onHashtagClick?: (hashtag: string) => void
   showMedia?: boolean
   showLinkPreviews?: boolean
+  currentUser?: string | null
 }
 
 // ─── Colors ─────────────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ function ThreadMessage({
   showMedia,
   showLinkPreviews,
   isLast,
+  currentUser,
 }: {
   node: ThreadNode
   onPostClick?: (msg: TelegramMessage) => void
@@ -162,10 +164,12 @@ function ThreadMessage({
   showMedia?: boolean
   showLinkPreviews?: boolean
   isLast: boolean
+  currentUser?: string | null
 }) {
   const msg = node.message
   const text = getMessageText(msg)
   const senderName = msg.from || msg.actor || "Unknown"
+  const isMe = !!(currentUser && senderName.toLowerCase() === currentUser.toLowerCase())
   const senderColor = hashColor(senderName)
   const threadColor = THREAD_DEPTH_COLORS[node.depth % THREAD_DEPTH_COLORS.length]
   const hasChildren = node.children.length > 0
@@ -212,7 +216,11 @@ function ThreadMessage({
         {/* Message card */}
         <div
           onClick={() => onPostClick?.(msg)}
-          className="group/thread rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/20 hover:bg-card/80 cursor-pointer"
+          className={`group/thread rounded-lg border p-3 transition-all cursor-pointer ${
+            isMe
+              ? "border-primary/30 bg-primary/[0.08] hover:border-primary/40 hover:bg-primary/[0.12]"
+              : "border-border bg-card hover:border-primary/20 hover:bg-card/80"
+          }`}
           style={{
             borderLeftWidth: node.depth > 0 ? "2px" : undefined,
             borderLeftColor: node.depth > 0 ? threadColor : undefined,
@@ -329,6 +337,7 @@ function ThreadMessage({
                     showMedia={showMedia}
                     showLinkPreviews={showLinkPreviews}
                     isLast={i === node.children.length - 1}
+                    currentUser={currentUser}
                   />
                 ))}
               </div>
@@ -353,6 +362,7 @@ export function ThreadedView({
   onHashtagClick,
   showMedia = true,
   showLinkPreviews = true,
+  currentUser,
 }: ThreadedViewProps) {
   const threads = useMemo(
     () => buildThreads(messages, topics, activeTopic),
@@ -415,6 +425,7 @@ export function ThreadedView({
               showMedia={showMedia}
               showLinkPreviews={showLinkPreviews}
               isLast={false}
+              currentUser={currentUser}
             />
           </div>
         ))}
