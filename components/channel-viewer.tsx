@@ -20,6 +20,13 @@ import { StatsView } from "./stats-view"
 import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
+import { ConflictView } from "./conflict-view"
+import { ManipulationView } from "./manipulation-view"
+import { SentimentView } from "./sentiment-view"
+import { FraudView } from "./fraud-view"
+import { UserProfilesView } from "./user-profiles-view"
+import { ReportsView } from "./reports-view"
+import { AIChatWidget } from "./ai-chat-widget"
 
 
 interface ChannelViewerProps {
@@ -42,6 +49,10 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
+  const [fraudOpen, setFraudOpen] = useState(false)
+  const [userProfilesOpen, setUserProfilesOpen] = useState(false)
+  const [reportsOpen, setReportsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -163,6 +174,10 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGraphClick={() => setGraphOpen(true)}
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
+        onSentimentClick={() => setSentimentOpen(true)}
+        onFraudClick={() => setFraudOpen(true)}
+        onUserProfilesClick={() => setUserProfilesOpen(true)}
+        onReportsClick={() => setReportsOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -232,6 +247,48 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         <InsightsView
           messages={data.messages}
           onClose={() => setInsightsOpen(false)}
+        />
+      )}
+
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
+          messages={data.messages}
+          onClose={() => setSentimentOpen(false)}
+          onPostClick={(msg) => {
+            setSentimentOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Fraud detection overlay */}
+      {fraudOpen && (
+        <FraudView
+          messages={data.messages}
+          onClose={() => setFraudOpen(false)}
+          onPostClick={(msg) => {
+            setFraudOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* User Profiles overlay */}
+      {userProfilesOpen && (
+        <UserProfilesView
+          messages={data.messages}
+          onClose={() => setUserProfilesOpen(false)}
+        />
+      )}
+
+      {/* Reports overlay */}
+      {reportsOpen && (
+        <ReportsView
+          messages={data.messages}
+          onClose={() => setReportsOpen(false)}
         />
       )}
 
@@ -321,6 +378,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           New file
         </button>
       </div>
+      {/* AI Chat - Puter.js (free, no API key) */}
+      <AIChatWidget messages={data.messages} />
     </div>
   )
 }

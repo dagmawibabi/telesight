@@ -22,6 +22,9 @@ import {
   Calendar,
   GitBranch,
   MessageCircle,
+  Flame,
+  Shield,
+  Brain,
 } from "lucide-react"
 import type { TelegramExport, TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText, getDMParticipants, computeStats } from "@/lib/telegram-types"
@@ -34,6 +37,9 @@ import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { CalendarView } from "./calendar-view"
 import { ThreadedView } from "./threaded-view"
+import { SentimentView } from "./sentiment-view"
+import { FraudView } from "./fraud-view"
+import { AIChatWidget } from "./ai-chat-widget"
 
 interface DMViewerProps {
   data: TelegramExport
@@ -207,6 +213,8 @@ function DMHeader({
   totalReactions,
   onStatsClick,
   onInsightsClick,
+  onSentimentClick,
+  onFraudClick,
   onGraphClick,
   onGalleryClick,
   onCalendarClick,
@@ -218,6 +226,8 @@ function DMHeader({
   totalReactions: number
   onStatsClick: () => void
   onInsightsClick: () => void
+  onSentimentClick?: () => void
+  onFraudClick?: () => void
   onGraphClick: () => void
   onGalleryClick: () => void
   onCalendarClick: () => void
@@ -270,6 +280,20 @@ function DMHeader({
             >
               <Lightbulb className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Insights</span>
+            </button>
+            <button
+              onClick={onSentimentClick}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
+            >
+              <Brain className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sentiment</span>
+            </button>
+            <button
+              onClick={onFraudClick}
+              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Fraud</span>
             </button>
             <button
               onClick={onGraphClick}
@@ -335,6 +359,8 @@ export function DMViewer({
   const [showSearch, setShowSearch] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
+  const [fraudOpen, setFraudOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
@@ -426,6 +452,8 @@ export function DMViewer({
           totalReactions={stats.totalReactions}
           onStatsClick={() => setStatsOpen(true)}
           onInsightsClick={() => setInsightsOpen(true)}
+          onSentimentClick={() => setSentimentOpen(true)}
+          onFraudClick={() => setFraudOpen(true)}
           onGraphClick={() => setGraphOpen(true)}
           onGalleryClick={() => setGalleryOpen(true)}
           onCalendarClick={() => {
@@ -577,6 +605,32 @@ export function DMViewer({
         <InsightsView messages={data.messages} onClose={() => setInsightsOpen(false)} />
       )}
 
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
+          messages={data.messages}
+          onClose={() => setSentimentOpen(false)}
+          onPostClick={(msg) => {
+            setSentimentOpen(false)
+            setSelectedPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Fraud detection overlay */}
+      {fraudOpen && (
+        <FraudView
+          messages={data.messages}
+          onClose={() => setFraudOpen(false)}
+          onPostClick={(msg) => {
+            setFraudOpen(false)
+            setSelectedPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
       {/* Data graph overlay */}
       {graphOpen && (
         <ReplyGraphView
@@ -681,6 +735,9 @@ export function DMViewer({
           }
         }}
       />
+
+      {/* AI Chat - Puter.js (free, no API key) */}
+      <AIChatWidget messages={data.messages} />
     </div>
   )
 }

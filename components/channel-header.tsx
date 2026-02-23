@@ -12,6 +12,11 @@ import {
   Share2,
   Images,
   Lightbulb,
+  Flame,
+  Brain,
+  Shield,
+  User,
+  FileText,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
@@ -21,9 +26,13 @@ interface ChannelHeaderProps {
   onGraphClick?: () => void
   onGalleryClick?: () => void
   onInsightsClick?: () => void
+  onSentimentClick?: () => void
+  onFraudClick?: () => void
+  onUserProfilesClick?: () => void
+  onReportsClick?: () => void
 }
 
-export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClick, onInsightsClick, onSentimentClick, onFraudClick, onUserProfilesClick, onReportsClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -118,6 +127,42 @@ export function ChannelHeader({ stats, onStatsClick, onGraphClick, onGalleryClic
               >
                 <Lightbulb className="h-3.5 w-3.5" />
                 Insights
+              </button>
+            )}
+            {onSentimentClick && (
+              <button
+                onClick={onSentimentClick}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                Sentiment
+              </button>
+            )}
+            {onFraudClick && (
+              <button
+                onClick={onFraudClick}
+                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Fraud
+              </button>
+            )}
+            {onUserProfilesClick && (
+              <button
+                onClick={onUserProfilesClick}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 text-xs font-medium text-blue-500 transition-all hover:bg-blue-500/20"
+              >
+                <User className="h-3.5 w-3.5" />
+                Users
+              </button>
+            )}
+            {onReportsClick && (
+              <button
+                onClick={onReportsClick}
+                className="flex items-center gap-1.5 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-1.5 text-xs font-medium text-green-500 transition-all hover:bg-green-500/20"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Reports
               </button>
             )}
           </div>
