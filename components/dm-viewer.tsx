@@ -109,7 +109,7 @@ function ChatBubble({
       </div>
 
       {/* Bubble */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 min-w-0">
         {/* Reply preview */}
         {replyPreview && (
           <button
@@ -126,7 +126,7 @@ function ChatBubble({
         )}
 
         <div
-          className={`rounded-2xl px-3.5 py-2 cursor-pointer transition-shadow hover:shadow-md ${
+          className={`rounded-2xl px-3.5 py-2 cursor-pointer transition-shadow hover:shadow-md overflow-hidden ${
             isMe
               ? `bg-primary text-primary-foreground ${replyPreview ? "rounded-tr-sm" : ""}`
               : `bg-card border border-border text-foreground ${replyPreview ? "rounded-tl-sm" : ""}`
@@ -150,7 +150,7 @@ function ChatBubble({
             isEmojiOnly ? (
               <p className="text-3xl leading-tight">{text}</p>
             ) : (
-              <p className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words ${
+              <p className={`text-[13px] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                 isMe ? "text-primary-foreground" : "text-foreground"
               }`}>
                 {text}
@@ -342,14 +342,20 @@ export function DMViewer({
   const [viewMode, setViewMode] = useState<"bubble" | "threaded">("bubble")
 
   const participants = useMemo(
-    () => getDMParticipants(data.messages) || [data.name, "You"],
+    (): [string, string] =>
+      getDMParticipants(data.messages) || [data.name, "You"],
     [data]
   )
 
   const stats = useMemo(() => computeStats(data), [data])
 
-  // First sender -> left side, second sender -> right side ("me")
-  const [personA, personB] = participants
+  // In Telegram exports, data.name is the chat partner (the other person).
+  // Ensure they land on the left and the exporter lands on the right ("me").
+  const [rawA, rawB] = participants
+  const chatPartnerIsFirst =
+    rawA.toLowerCase() === data.name.toLowerCase()
+  const personA = chatPartnerIsFirst ? rawA : rawB
+  const personB = chatPartnerIsFirst ? rawB : rawA
   const colorA = "oklch(0.7 0.15 180)"
   const colorB = "oklch(0.7 0.15 30)"
 
@@ -509,6 +515,7 @@ export function DMViewer({
             onHashtagClick={() => {}}
             showMedia={true}
             showLinkPreviews={true}
+            currentUser={personB}
           />
         ) : (
           <div className="mx-auto max-w-5xl px-4 md:px-6 py-6 flex flex-col gap-1.5">
