@@ -108,10 +108,12 @@ export function detectExportType(data: TelegramExport): ExportType {
     return "group"
   }
 
-  // Heuristic: count unique senders
+  // Heuristic: count unique senders using from_id (more reliable than from)
   const senders = new Set<string>()
   for (const msg of data.messages) {
-    if (msg.from) senders.add(msg.from)
+    // Use from_id if available, fallback to from
+    const senderId = msg.from_id || msg.from
+    if (senderId) senders.add(senderId)
     if (senders.size > 2) return "group"
   }
 
