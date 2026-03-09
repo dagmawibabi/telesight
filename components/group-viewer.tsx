@@ -23,6 +23,12 @@ import { InsightsView } from "./insights-view"
 import { MemberAnalyticsView } from "./member-analytics-view"
 import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
+import { ConflictView } from "./conflict-view"
+import { SentimentView } from "./sentiment-view"
+import { FraudView } from "./fraud-view"
+import { UserProfilesView } from "./user-profiles-view"
+import { ReportsView } from "./reports-view"
+import { AIChatWidget } from "./ai-chat-widget"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -45,6 +51,10 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
+  const [fraudOpen, setFraudOpen] = useState(false)
+  const [userProfilesOpen, setUserProfilesOpen] = useState(false)
+  const [reportsOpen, setReportsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -148,6 +158,10 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onMembersClick={() => setMembersOpen(true)}
+        onSentimentClick={() => setSentimentOpen(true)}
+        onFraudClick={() => setFraudOpen(true)}
+        onUserProfilesClick={() => setUserProfilesOpen(true)}
+        onReportsClick={() => setReportsOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -298,6 +312,48 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         />
       )}
 
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
+          messages={data.messages}
+          onClose={() => setSentimentOpen(false)}
+          onPostClick={(msg) => {
+            setSentimentOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* Fraud detection overlay */}
+      {fraudOpen && (
+        <FraudView
+          messages={data.messages}
+          onClose={() => setFraudOpen(false)}
+          onPostClick={(msg) => {
+            setFraudOpen(false)
+            openPost(msg)
+          }}
+          mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* User Profiles overlay */}
+      {userProfilesOpen && (
+        <UserProfilesView
+          messages={data.messages}
+          onClose={() => setUserProfilesOpen(false)}
+        />
+      )}
+
+      {/* Reports overlay */}
+      {reportsOpen && (
+        <ReportsView
+          messages={data.messages}
+          onClose={() => setReportsOpen(false)}
+        />
+      )}
+
       {/* Post detail overlay */}
       {selectedPost && (
         <PostDetailView
@@ -372,6 +428,8 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
           New file
         </button>
       </div>
+      {/* AI Chat - Puter.js (free, no API key) */}
+      <AIChatWidget messages={data.messages} />
     </div>
   )
 }
